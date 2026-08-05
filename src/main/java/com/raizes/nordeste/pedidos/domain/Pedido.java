@@ -1,55 +1,74 @@
 package com.raizes.nordeste.pedidos.domain;
 
-import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.util.*;
+import java.util.UUID;
 
-@Entity
-@Table(name = "tb_pedidos")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class Pedido {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @Column(name = "unidade_id", nullable = false)
-    private UUID unidadeId;
-
-    @Column(name = "cliente_id", nullable = false)
     private UUID clienteId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "canal_pedido", nullable = false)
+    private UUID unidadeId;
     private CanalPedido canalPedido;
+    private BigDecimal valorTotal;
+    private String status;
 
-    @Column(name = "data_hora", nullable = false)
-    private LocalDateTime dataHora;
+    public Pedido() {
+    }
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private StatusPedido status;
+    public Pedido(UUID id, UUID clienteId, UUID unidadeId, CanalPedido canalPedido, BigDecimal valorTotal, String status) {
+        this.id = id;
+        this.clienteId = clienteId;
+        this.unidadeId = unidadeId;
+        this.canalPedido = canalPedido;
+        this.valorTotal = valorTotal;
+        this.status = status;
+    }
 
-    @Column(nullable = false)
-    private BigDecimal total;
+    public UUID getId() {
+        return id;
+    }
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "forma_pagamento", nullable = false)
-    private FormaPagamento formaPagamento;
+    public void setId(UUID id) {
+        this.id = id;
+    }
 
-    private String observacao;
+    public UUID getClienteId() {
+        return clienteId;
+    }
 
-    @OneToMany(mappedBy = "pedido", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ItemPedido> itens = new ArrayList<>();
+    public void setClienteId(UUID clienteId) {
+        this.clienteId = clienteId;
+    }
 
-    @PrePersist
-    protected void onCreate() {
-        this.dataHora = LocalDateTime.now(ZoneOffset.UTC);
-        this.status = StatusPedido.AGUARDANDO_PAGAMENTO;
+    public UUID getUnidadeId() {
+        return unidadeId;
+    }
+
+    public void setUnidadeId(UUID unidadeId) {
+        this.unidadeId = unidadeId;
+    }
+
+    public CanalPedido getCanalPedido() {
+        return canalPedido;
+    }
+
+    public void setCanalPedido(CanalPedido canalPedido) {
+        this.canalPedido = canalPedido;
+    }
+
+    public BigDecimal getValorTotal() {
+        return valorTotal;
+    }
+
+    public void setValorTotal(BigDecimal valorTotal) {
+        this.valorTotal = valorTotal;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }
