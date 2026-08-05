@@ -10,6 +10,31 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: raizes_db
+          POSTGRES_USER: raizes_app
+          POSTGRES_PASSWORD: secret_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        ports:
+          - 5672:5672
+
     steps:
       - uses: actions/checkout@v3
 
@@ -21,7 +46,7 @@ jobs:
           cache: maven
 
       - name: Build with Maven
-        run: mvn -B package --file pom.xml
+        run: mvn -B package --file pom.xml -DskipTests
 
       - name: Run Unit and Integration Tests
         run: mvn test
