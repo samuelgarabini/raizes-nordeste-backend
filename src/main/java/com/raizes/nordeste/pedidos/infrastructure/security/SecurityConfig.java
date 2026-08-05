@@ -1,4 +1,4 @@
-package com.raizes.nordeste.infrastructure.security;
+package com.raizes.nordeste.pedidos.infrastructure.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,11 +13,11 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http
+        return http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll()
-            );
-        return http.build();
+                .anyRequest().permitAll() // Libera todos os endpoints para desenvolvimento/testes
+            )
+            .build();
     }
 }
