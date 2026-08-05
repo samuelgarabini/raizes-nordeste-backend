@@ -1,0 +1,66 @@
+{
+  "info": {
+    "name": "Raízes do Nordeste - API Tests",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "T01 - Login Válido",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"gerente.recife@raizesdonordeste.com.br\",\n  \"senha\": \"SenhaForte@2026\"\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/v1/auth/login", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "v1", "auth", "login"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pedidos",
+      "item": [
+        {
+          "name": "T04 - Criar Pedido Totem",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unidadeId\": \"550e8400-e29b-41d4-a716-446655440000\",\n  \"clienteId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"canalPedido\": \"TOTEM\",\n  \"formaPagamento\": \"PIX\",\n  \"itens\": [\n    {\n      \"produtoId\": \"c39a2828-084a-4b20-9142-b06216440201\",\n      \"quantidade\": 2,\n      \"precoUnitario\": 22.50\n    }\n  ]\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/v1/pedidos", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "v1", "pedidos"] }
+          }
+        },
+        {
+          "name": "T09 - Filtrar Pedidos por Canal Totem",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "http://localhost:8080/api/v1/pedidos?canalPedido=TOTEM", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "v1", "pedidos"], "query": [{ "key": "canalPedido", "value": "TOTEM" }] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Pagamentos",
+      "item": [
+        {
+          "name": "T07 - Pagamento Mock Sucesso",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"pedidoId\": \"a1b2c3d4-e5f6-7890-abcd-ef1234567890\",\n  \"valor\": 45.00,\n  \"formaPagamento\": \"PIX\"\n}"
+            },
+            "url": { "raw": "http://localhost:8080/api/v1/pagamentos/mock", "protocol": "http", "host": ["localhost"], "port": "8080", "path": ["api", "v1", "pagamentos", "mock"] }
+          }
+        }
+      ]
+    }
+  ]
+}
