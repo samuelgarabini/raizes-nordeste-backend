@@ -1,8 +1,9 @@
 package com.raizes.nordeste.pedidos.domain;
 
 public enum CanalPedido {
+    APP,
     TOTEM,
-    DELIVERY,
     BALCAO,
-    MESA
+    PICKUP,
+    WEB
 }
