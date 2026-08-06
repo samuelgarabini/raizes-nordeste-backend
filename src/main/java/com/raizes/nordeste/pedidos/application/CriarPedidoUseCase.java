@@ -23,11 +23,9 @@ public class CriarPedidoUseCase {
     }
 
     public Pedido executar(UUID clienteId, UUID unidadeId, CanalPedido canal, BigDecimal valorTotal) {
-        // 1. Cria e salva o pedido no PostgreSQL
         Pedido pedido = new Pedido(UUID.randomUUID(), clienteId, unidadeId, canal, valorTotal, "CRIADO");
         Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
-        // 2. Dispara o evento de integração para a fila do RabbitMQ
         PedidoCriadoEvent event = new PedidoCriadoEvent(
             pedidoSalvo.getId().toString(),
             clienteId.toString(),

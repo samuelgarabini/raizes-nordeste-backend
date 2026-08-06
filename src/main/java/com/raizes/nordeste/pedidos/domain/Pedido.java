@@ -1,15 +1,15 @@
 package com.raizes.nordeste.pedidos.domain;
 
 import jakarta.persistence.*;
-import java.io.Serializable; // Import do Serializable
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "pedidos")
-public class Pedido implements Serializable { // Implementa Serializable
+public class Pedido implements Serializable { 
 
-    private static final long serialVersionUID = 1L; // Identificador da versão de serialização
+    private static final long serialVersionUID = 1L; 
 
     @Id
     private UUID id;
