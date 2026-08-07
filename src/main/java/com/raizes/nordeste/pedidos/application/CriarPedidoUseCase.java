@@ -1,43 +1,64 @@
 package com.raizes.nordeste.pedidos.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.raizes.nordeste.infraestrutura.outbox.OutboxMessage;
+import com.raizes.nordeste.infraestrutura.outbox.OutboxRepository;
 import com.raizes.nordeste.pedidos.domain.CanalPedido;
 import com.raizes.nordeste.pedidos.domain.Pedido;
-import com.raizes.nordeste.pedidos.domain.PedidoRepository;
-import com.raizes.nordeste.pedidos.infrastructure.messaging.PedidoCriadoEvent;
-import com.raizes.nordeste.pedidos.infrastructure.messaging.RabbitMQConfig;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import com.raizes.nordeste.pedidos.domain.PedidoRepository; // Import do repositório de Pedido
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class CriarPedidoUseCase {
 
-    private final PedidoRepository pedidoRepository;
-    private final RabbitTemplate rabbitTemplate;
+    private final PedidoRepository pedidoRepository; // Injeção do repositório de Pedidos
+    private final OutboxRepository outboxRepository;
+    private final ObjectMapper objectMapper;
 
-    public CriarPedidoUseCase(PedidoRepository pedidoRepository, RabbitTemplate rabbitTemplate) {
-        this.pedidoRepository = pedidoRepository;
-        this.rabbitTemplate = rabbitTemplate;
-    }
-
+    @Transactional
     public Pedido executar(UUID clienteId, UUID unidadeId, CanalPedido canal, BigDecimal valorTotal) {
-        Pedido pedido = new Pedido(UUID.randomUUID(), clienteId, unidadeId, canal, valorTotal, "CRIADO");
+        UUID pedidoId = UUID.randomUUID();
+
+        Pedido pedido = new Pedido(
+            pedidoId,
+            clienteId,
+            unidadeId,
+            canal,
+            valorTotal,
+            "AGUARDANDO_PAGAMENTO"
+        );
+
+        // 1. Salva o Pedido na tabela 'pedidos'
         Pedido pedidoSalvo = pedidoRepository.save(pedido);
 
-        PedidoCriadoEvent event = new PedidoCriadoEvent(
-            pedidoSalvo.getId().toString(),
-            clienteId.toString(),
-            valorTotal
-        );
-
-        rabbitTemplate.convertAndSend(
-            RabbitMQConfig.EXCHANGE_PEDIDOS,
-            RabbitMQConfig.ROUTING_KEY_PEDIDO_CRIADO,
-            event
-        );
+        // 2. Salva o Evento na tabela 'tb_outbox'
+        executar(pedidoSalvo, pedidoId.toString());
 
         return pedidoSalvo;
+    }
+
+    @Transactional
+    public void executar(Object commandPayload, String aggregateId) {
+        try {
+            String payloadJson = objectMapper.writeValueAsString(commandPayload);
+
+            OutboxMessage outbox = OutboxMessage.builder()
+                    .aggregateType("PEDIDO")
+                    .aggregateId(aggregateId)
+                    .type("PEDIDO_CRIADO")
+                    .payload(payloadJson)
+                    .build();
+
+            outboxRepository.save(outbox);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Erro ao serializar evento do pedido", e);
+        }
     }
 }
