@@ -1,4 +1,4 @@
-package com.raizes.nordeste.infraestrutura.outbox;
+package com.raizes.nordeste.pedidos.infrastructure.outbox;
 
 import jakarta.persistence.*;
 import lombok.*;

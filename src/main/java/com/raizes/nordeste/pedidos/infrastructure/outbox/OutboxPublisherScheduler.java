@@ -1,4 +1,4 @@
-package com.raizes.nordeste.infraestrutura.outbox;
+package com.raizes.nordeste.pedidos.infrastructure.outbox;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,4 +1,4 @@
-package com.raizes.nordeste.infraestrutura.outbox;
+package com.raizes.nordeste.pedidos.infrastructure.outbox;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;

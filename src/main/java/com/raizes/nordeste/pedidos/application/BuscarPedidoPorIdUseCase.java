@@ -1,7 +1,7 @@
 package com.raizes.nordeste.pedidos.application;
 
 import com.raizes.nordeste.pedidos.domain.Pedido;
-import com.raizes.nordeste.pedidos.domain.PedidoRepository;
+import com.raizes.nordeste.pedidos.repository.PedidoRepository;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 

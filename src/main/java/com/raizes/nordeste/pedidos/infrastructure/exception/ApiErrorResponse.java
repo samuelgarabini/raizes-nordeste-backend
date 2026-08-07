@@ -21,8 +21,9 @@ public class ApiErrorResponse {
     private String requestId;
 
     @Data
-    @AllArgsConstructor
+    @Builder
     @NoArgsConstructor
+    @AllArgsConstructor
     public static class FieldErrorDetail {
         private String field;
         private String issue;

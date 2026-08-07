@@ -42,6 +42,16 @@ public class Pedido implements Serializable {
         this.status = status;
     }
 
+    // Método para aplicar o desconto da campanha diretamente no valor total
+    public void aplicarDesconto(BigDecimal valorDesconto) {
+        if (valorDesconto != null && valorDesconto.compareTo(BigDecimal.ZERO) > 0) {
+            this.valorTotal = this.valorTotal.subtract(valorDesconto);
+            if (this.valorTotal.compareTo(BigDecimal.ZERO) < 0) {
+                this.valorTotal = BigDecimal.ZERO;
+            }
+        }
+    }
+
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
 

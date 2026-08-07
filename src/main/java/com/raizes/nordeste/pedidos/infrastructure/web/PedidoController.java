@@ -3,6 +3,7 @@ package com.raizes.nordeste.pedidos.infrastructure.web;
 import com.raizes.nordeste.pedidos.application.BuscarPedidoPorIdUseCase;
 import com.raizes.nordeste.pedidos.application.BuscarTodosPedidosUseCase;
 import com.raizes.nordeste.pedidos.application.CriarPedidoUseCase;
+import com.raizes.nordeste.pedidos.application.ProcessarCheckoutUseCase; // Novo import
 import com.raizes.nordeste.pedidos.domain.Pedido;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -18,13 +19,16 @@ public class PedidoController {
     private final CriarPedidoUseCase criarPedidoUseCase;
     private final BuscarPedidoPorIdUseCase buscarPedidoPorIdUseCase;
     private final BuscarTodosPedidosUseCase buscarTodosPedidosUseCase;
+    private final ProcessarCheckoutUseCase processarCheckoutUseCase; // Nova dependência
 
     public PedidoController(CriarPedidoUseCase criarPedidoUseCase, 
                             BuscarPedidoPorIdUseCase buscarPedidoPorIdUseCase,
-                            BuscarTodosPedidosUseCase buscarTodosPedidosUseCase) {
+                            BuscarTodosPedidosUseCase buscarTodosPedidosUseCase,
+                            ProcessarCheckoutUseCase processarCheckoutUseCase) {
         this.criarPedidoUseCase = criarPedidoUseCase;
         this.buscarPedidoPorIdUseCase = buscarPedidoPorIdUseCase;
         this.buscarTodosPedidosUseCase = buscarTodosPedidosUseCase;
+        this.processarCheckoutUseCase = processarCheckoutUseCase;
     }
 
     @PostMapping
@@ -36,6 +40,15 @@ public class PedidoController {
             request.valorTotal()
         );
         return ResponseEntity.ok(pedido);
+    }
+
+    // NOVO ENDPOINT DE CHECKOUT
+    @PostMapping("/{id}/checkout")
+    public ResponseEntity<Pedido> processarCheckout(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String codigoPromocional) {
+        Pedido pedidoAtualizado = processarCheckoutUseCase.executar(id, codigoPromocional);
+        return ResponseEntity.ok(pedidoAtualizado);
     }
 
     @GetMapping

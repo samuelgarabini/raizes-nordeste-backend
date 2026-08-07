@@ -2,11 +2,11 @@ package com.raizes.nordeste.pedidos.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.raizes.nordeste.infraestrutura.outbox.OutboxMessage;
-import com.raizes.nordeste.infraestrutura.outbox.OutboxRepository;
+import com.raizes.nordeste.pedidos.infrastructure.outbox.OutboxMessage;
+import com.raizes.nordeste.pedidos.infrastructure.outbox.OutboxRepository;
 import com.raizes.nordeste.pedidos.domain.CanalPedido;
 import com.raizes.nordeste.pedidos.domain.Pedido;
-import com.raizes.nordeste.pedidos.domain.PedidoRepository; // Import do repositório de Pedido
+import com.raizes.nordeste.pedidos.repository.PedidoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,7 +18,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CriarPedidoUseCase {
 
-    private final PedidoRepository pedidoRepository; // Injeção do repositório de Pedidos
+    private final PedidoRepository pedidoRepository;
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
 
