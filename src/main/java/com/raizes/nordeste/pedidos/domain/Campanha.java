@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Data;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Entity
@@ -12,7 +11,8 @@ import java.util.UUID;
 public class Campanha {
 
     @Id
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id; // Alterado de UUID para Long para coincidir com o banco de dados
 
     @Column(nullable = false, length = 150)
     private String nome;

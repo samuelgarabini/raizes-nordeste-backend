@@ -1,5 +1,5 @@
 -- Tabela de Campanhas Promocionais
-CREATE TABLE campanhas (
+CREATE TABLE IF NOT EXISTS campanhas (
     id BIGSERIAL PRIMARY KEY,
     nome VARCHAR(150) NOT NULL,
     codigo_promocional VARCHAR(50) UNIQUE,
@@ -11,22 +11,29 @@ CREATE TABLE campanhas (
 );
 
 -- Tabela de Carteira de Fidelidade do Cliente
-CREATE TABLE carteiras_fidelidade (
+-- (Garante que a tabela clientes exista ou cria uma básica se necessário)
+CREATE TABLE IF NOT EXISTS clientes (
+    id UUID PRIMARY KEY,
+    nome VARCHAR(150),
+    email VARCHAR(255)
+);
+
+CREATE TABLE IF NOT EXISTS carteiras_fidelidade (
     id BIGSERIAL PRIMARY KEY,
-    cliente_id BIGINT NOT NULL UNIQUE, -- Assumindo que a tabela de clientes já existe
+    cliente_id UUID NOT NULL UNIQUE, 
     pontos_acumulados INT DEFAULT 0,
     ultima_atualizacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_cliente_fidelidade FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE CASCADE
 );
 
 -- Histórico de transações de pontos (para auditoria)
-CREATE TABLE historico_pontos (
+-- Nota: A FK de pedidos foi retirada temporariamente caso a tabela pedidos ainda não exista nas migrations
+CREATE TABLE IF NOT EXISTS historico_pontos (
     id BIGSERIAL PRIMARY KEY,
     carteira_id BIGINT NOT NULL,
-    pedido_id BIGINT NOT NULL, -- Referência ao pedido que gerou/usou os pontos
-    pontos_alterados INT NOT NULL, -- Positivo (ganho) ou Negativo (resgate)
-    tipo_operacao VARCHAR(20) NOT NULL, -- 'ACUMULO' ou 'RESGATE'
+    pedido_id BIGINT NOT NULL, 
+    pontos_alterados INT NOT NULL, 
+    tipo_operacao VARCHAR(20) NOT NULL, 
     data_operacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT fk_carteira_historico FOREIGN KEY (carteira_id) REFERENCES carteiras_fidelidade(id),
-    CONSTRAINT fk_pedido_historico FOREIGN KEY (pedido_id) REFERENCES pedidos(id)
+    CONSTRAINT fk_carteira_historico FOREIGN KEY (carteira_id) REFERENCES carteiras_fidelidade(id)
 );
