@@ -104,7 +104,7 @@ public class CriarPedidoUseCase {
             command.unidadeId(),
             command.canalPedido(),
             valorTotal,
-            StatusPedido.AGUARDANDO_PAGAMENTO.name()
+            StatusPedido.AGUARDANDO_PAGAMENTO
         );
 
         pedidoRepository.save(pedido);

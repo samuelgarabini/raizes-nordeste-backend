@@ -1,6 +1,7 @@
 package com.raizes.nordeste.pedidos.application.dto;
 
 import com.raizes.nordeste.pedidos.domain.CanalPedido;
+import com.raizes.nordeste.pedidos.domain.StatusPedido;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -12,7 +13,7 @@ public record PedidoCriadoDTO(
     UUID unidadeId,
     CanalPedido canalPedido,
     BigDecimal valorTotal,
-    String status,
+    StatusPedido status,
     List<Item> itens
 ) {
 

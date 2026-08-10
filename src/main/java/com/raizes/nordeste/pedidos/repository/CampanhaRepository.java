@@ -7,6 +7,11 @@ import org.springframework.stereotype.Repository;
 import java.util.Optional;
 
 @Repository
-public interface CampanhaRepository extends JpaRepository<Campanha, Long> {
-    Optional<Campanha> findByCodigoPromocionalAndAtivoTrue(String codigoPromocional);
+public interface CampanhaRepository
+    extends JpaRepository<Campanha, Long> {
+
+    Optional<Campanha>
+        findByCodigoPromocionalIgnoreCaseAndAtivoTrue(
+            String codigoPromocional
+        );
 }
