@@ -1,39 +1,48 @@
 package com.raizes.nordeste.pedidos.presentation;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1")
 public class SystemMockController {
 
-    // A rota POST /api/v1/auth/login agora é tratada exclusivamente pelo AuthController com suporte a JWT.
-    
-    // ROTA DE CARDÁPIO REMOVIDA DAQUI: 
-    // Agora ela é gerenciada exclusivamente e de forma real pelo CardapioController + Redis.
+    /*
+     * A autenticação é tratada pelo AuthController.
+     * O cardápio é tratado pelo CardapioController.
+     * O pagamento mockado agora faz parte do checkout.
+     *
+     * Este controller permanecerá temporariamente apenas
+     * para o endpoint de demonstração da LGPD, que será
+     * implementado de verdade em uma etapa posterior.
+     */
 
-    // 2. Pagamentos Mock: POST /api/v1/pagamentos/mock
-    @PostMapping("/pagamentos/mock")
-    public ResponseEntity<Map<String, Object>> processarPagamentoMock(@RequestBody Map<String, Object> request) {
-        return ResponseEntity.ok(Map.of(
-            "transacaoId", UUID.randomUUID().toString(),
-            "pedidoId", request.getOrDefault("pedidoId", 101),
-            "status", "APROVADO",
-            "gateway", "MockGatewayPayment",
-            "mensagem", "Pagamento aprovado com sucesso."
-        ));
-    }
-
-    // 3. LGPD: DELETE /api/v1/lgpd/anonimizar
     @DeleteMapping("/lgpd/anonimizar")
-    public ResponseEntity<Map<String, String>> anonimizarDados(@RequestParam(required = false) String clienteId) {
-        String idAlvo = clienteId != null ? clienteId : "desconhecido";
-        return ResponseEntity.ok(Map.of(
-            "status", "SUCESSO",
-            "mensagem", "Os dados sensíveis (PII) do cliente " + idAlvo + " foram anonimizados com sucesso em conformidade com a LGPD."
-        ));
+    public ResponseEntity<Map<String, String>>
+        anonimizarDados(
+            @RequestParam(required = false)
+                String clienteId
+        ) {
+
+        String idAlvo =
+            clienteId != null
+                ? clienteId
+                : "desconhecido";
+
+        return ResponseEntity.ok(
+            Map.of(
+                "status",
+                "SUCESSO",
+                "mensagem",
+                "Os dados sensíveis do cliente "
+                    + idAlvo
+                    + " foram anonimizados."
+            )
+        );
     }
 }

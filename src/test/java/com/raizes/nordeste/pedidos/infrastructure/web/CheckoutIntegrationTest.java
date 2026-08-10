@@ -13,6 +13,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -51,8 +52,16 @@ class CheckoutIntegrationTest {
     }
 
     @Test
-    void deveProcessarCheckoutApenasUmaVez() throws Exception {
+    void deveProcessarCheckoutApenasUmaVez()
+        throws Exception {
+
         UUID pedidoId = criarPedidoPadrao();
+
+        assertThat(estoqueDoProduto(101L))
+            .isEqualTo(48);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(49);
 
         mockMvc.perform(
                 post(
@@ -61,15 +70,40 @@ class CheckoutIntegrationTest {
                 )
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("PAGO"))
-            .andExpect(jsonPath("$.valorTotal").value(58.3));
+            .andExpect(jsonPath("$.status")
+                .value("PAGO"))
+            .andExpect(jsonPath("$.valorTotal")
+                .value(58.3))
+            .andExpect(jsonPath("$.statusPagamento")
+                .value("APROVADO"))
+            .andExpect(jsonPath("$.gateway")
+                .value("MOCK_GATEWAY"))
+            .andExpect(jsonPath("$.transacaoId")
+                .isNotEmpty())
+            .andExpect(jsonPath("$.processadoEm")
+                .isNotEmpty());
 
-        assertThat(pontosDoCliente()).isEqualTo(55);
+        assertThat(pontosDoCliente())
+            .isEqualTo(55);
 
         assertCreditoRegistrado(
             pedidoId,
             5
         );
+
+        assertPagamentoAprovado(
+            pedidoId,
+            new BigDecimal("58.30")
+        );
+
+        /*
+         * Pagamento aprovado não devolve os produtos.
+         */
+        assertThat(estoqueDoProduto(101L))
+            .isEqualTo(48);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(49);
 
         mockMvc.perform(
                 post(
@@ -81,16 +115,91 @@ class CheckoutIntegrationTest {
             .andExpect(jsonPath("$.error")
                 .value("CHECKOUT_NAO_PERMITIDO"));
 
-        assertThat(pontosDoCliente()).isEqualTo(55);
+        assertThat(pontosDoCliente())
+            .isEqualTo(55);
 
-        /*
-         * Mesmo após a segunda tentativa de checkout,
-         * deve existir somente um crédito para o pedido.
-         */
         assertCreditoRegistrado(
             pedidoId,
             5
         );
+
+        assertPagamentoAprovado(
+            pedidoId,
+            new BigDecimal("58.30")
+        );
+    }
+
+    @Test
+    void deveRecusarPagamentoEDevolverEstoque()
+        throws Exception {
+
+        assertThat(estoqueDoProduto(101L))
+            .isEqualTo(50);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(50);
+
+        UUID pedidoId = criarPedidoPadrao();
+
+        /*
+         * A criação do pedido reserva os produtos.
+         */
+        assertThat(estoqueDoProduto(101L))
+            .isEqualTo(48);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(49);
+
+        mockMvc.perform(
+                post(
+                    "/api/v1/pedidos/{id}/checkout",
+                    pedidoId
+                )
+                    .param(
+                        "resultadoPagamento",
+                        "RECUSADO"
+                    )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status")
+                .value("PAGAMENTO_RECUSADO"))
+            .andExpect(jsonPath("$.valorTotal")
+                .value(58.3))
+            .andExpect(jsonPath("$.statusPagamento")
+                .value("RECUSADO"))
+            .andExpect(jsonPath("$.gateway")
+                .value("MOCK_GATEWAY"))
+            .andExpect(jsonPath("$.motivoRecusa")
+                .value(
+                    "Pagamento recusado pelo gateway mock"
+                ))
+            .andExpect(jsonPath("$.transacaoId")
+                .isNotEmpty())
+            .andExpect(jsonPath("$.processadoEm")
+                .isNotEmpty());
+
+        assertThat(statusDoPedido(pedidoId))
+            .isEqualTo("PAGAMENTO_RECUSADO");
+
+        assertThat(pontosDoCliente())
+            .isEqualTo(50);
+
+        assertNenhumCreditoRegistrado(pedidoId);
+
+        assertPagamentoRecusado(
+            pedidoId,
+            new BigDecimal("58.30")
+        );
+
+        /*
+         * Os produtos devem retornar integralmente
+         * ao estoque da unidade.
+         */
+        assertThat(estoqueDoProduto(101L))
+            .isEqualTo(50);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(50);
     }
 
     @Test
@@ -117,22 +226,27 @@ class CheckoutIntegrationTest {
                 )
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("PAGO"))
-            .andExpect(jsonPath("$.valorTotal").value(58.3));
+            .andExpect(jsonPath("$.status")
+                .value("PAGO"))
+            .andExpect(jsonPath("$.statusPagamento")
+                .value("APROVADO"))
+            .andExpect(jsonPath("$.valorTotal")
+                .value(58.3));
 
         assertThat(quantidadeCarteirasDoCliente())
             .isEqualTo(1L);
 
-        /*
-         * A carteira foi criada com zero pontos e recebeu
-         * cinco pontos pelo pedido de R$ 58,30.
-         */
         assertThat(pontosDoCliente())
             .isEqualTo(5);
 
         assertCreditoRegistrado(
             pedidoId,
             5
+        );
+
+        assertPagamentoAprovado(
+            pedidoId,
+            new BigDecimal("58.30")
         );
     }
 
@@ -153,6 +267,7 @@ class CheckoutIntegrationTest {
                 .value("PEDIDO_NAO_ENCONTRADO"));
 
         assertNenhumCreditoRegistrado(pedidoId);
+        assertNenhumPagamentoRegistrado(pedidoId);
     }
 
     @Test
@@ -182,6 +297,17 @@ class CheckoutIntegrationTest {
             .isEqualTo(50);
 
         assertNenhumCreditoRegistrado(pedidoId);
+        assertNenhumPagamentoRegistrado(pedidoId);
+
+        /*
+         * Como o checkout não foi processado, o pedido
+         * continua reservando seus produtos.
+         */
+        assertThat(estoqueDoProduto(101L))
+            .isEqualTo(48);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(49);
     }
 
     @Test
@@ -201,19 +327,24 @@ class CheckoutIntegrationTest {
                     )
             )
             .andExpect(status().isOk())
-            .andExpect(jsonPath("$.status").value("PAGO"))
-            .andExpect(jsonPath("$.valorTotal").value(52.47));
+            .andExpect(jsonPath("$.status")
+                .value("PAGO"))
+            .andExpect(jsonPath("$.valorTotal")
+                .value(52.47))
+            .andExpect(jsonPath("$.statusPagamento")
+                .value("APROVADO"));
 
-        /*
-         * O valor com desconto continua gerando cinco pontos:
-         * R$ 52,47 / R$ 10,00 = 5 pontos inteiros.
-         */
         assertThat(pontosDoCliente())
             .isEqualTo(55);
 
         assertCreditoRegistrado(
             pedidoId,
             5
+        );
+
+        assertPagamentoAprovado(
+            pedidoId,
+            new BigDecimal("52.47")
         );
     }
 
@@ -253,6 +384,10 @@ class CheckoutIntegrationTest {
             .isEqualTo(50);
 
         assertNenhumCreditoRegistrado(pedidoId);
+        assertNenhumPagamentoRegistrado(pedidoId);
+
+        assertThat(estoqueDoProduto(104L))
+            .isEqualTo(49);
     }
 
     private UUID criarPedidoPadrao() throws Exception {
@@ -272,7 +407,9 @@ class CheckoutIntegrationTest {
         return criarPedido(itens);
     }
 
-    private UUID criarPedido(String itens) throws Exception {
+    private UUID criarPedido(String itens)
+        throws Exception {
+
         String request = """
             {
               "clienteId": "%s",
@@ -327,6 +464,56 @@ class CheckoutIntegrationTest {
             .isZero();
     }
 
+    private void assertPagamentoAprovado(
+        UUID pedidoId,
+        BigDecimal valorEsperado
+    ) {
+        assertThat(quantidadePagamentosDoPedido(pedidoId))
+            .isEqualTo(1L);
+
+        assertThat(statusPagamentoDoPedido(pedidoId))
+            .isEqualTo("APROVADO");
+
+        assertThat(valorPagamentoDoPedido(pedidoId))
+            .isEqualByComparingTo(valorEsperado);
+
+        assertThat(gatewayPagamentoDoPedido(pedidoId))
+            .isEqualTo("MOCK_GATEWAY");
+
+        assertThat(
+            quantidadePagamentosSemMotivoRecusa(pedidoId)
+        ).isEqualTo(1L);
+    }
+
+    private void assertPagamentoRecusado(
+        UUID pedidoId,
+        BigDecimal valorEsperado
+    ) {
+        assertThat(quantidadePagamentosDoPedido(pedidoId))
+            .isEqualTo(1L);
+
+        assertThat(statusPagamentoDoPedido(pedidoId))
+            .isEqualTo("RECUSADO");
+
+        assertThat(valorPagamentoDoPedido(pedidoId))
+            .isEqualByComparingTo(valorEsperado);
+
+        assertThat(gatewayPagamentoDoPedido(pedidoId))
+            .isEqualTo("MOCK_GATEWAY");
+
+        assertThat(motivoRecusaDoPagamento(pedidoId))
+            .isEqualTo(
+                "Pagamento recusado pelo gateway mock"
+            );
+    }
+
+    private void assertNenhumPagamentoRegistrado(
+        UUID pedidoId
+    ) {
+        assertThat(quantidadePagamentosDoPedido(pedidoId))
+            .isZero();
+    }
+
     private Integer pontosDoCliente() {
         return jdbcTemplate.queryForObject(
             """
@@ -336,6 +523,20 @@ class CheckoutIntegrationTest {
                 """,
             Integer.class,
             CLIENTE_ID
+        );
+    }
+
+    private Integer estoqueDoProduto(Long produtoId) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT quantidade
+                FROM tb_estoques
+                WHERE unidade_id = ?::uuid
+                  AND produto_id = ?
+                """,
+            Integer.class,
+            UNIDADE_RECIFE,
+            produtoId
         );
     }
 
@@ -396,6 +597,91 @@ class CheckoutIntegrationTest {
         );
     }
 
+    private Long quantidadePagamentosDoPedido(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM tb_pagamentos
+                WHERE pedido_id = ?
+                """,
+            Long.class,
+            pedidoId
+        );
+    }
+
+    private String statusPagamentoDoPedido(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT status
+                FROM tb_pagamentos
+                WHERE pedido_id = ?
+                """,
+            String.class,
+            pedidoId
+        );
+    }
+
+    private BigDecimal valorPagamentoDoPedido(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT valor
+                FROM tb_pagamentos
+                WHERE pedido_id = ?
+                """,
+            BigDecimal.class,
+            pedidoId
+        );
+    }
+
+    private String gatewayPagamentoDoPedido(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT gateway
+                FROM tb_pagamentos
+                WHERE pedido_id = ?
+                """,
+            String.class,
+            pedidoId
+        );
+    }
+
+    private String motivoRecusaDoPagamento(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT motivo_recusa
+                FROM tb_pagamentos
+                WHERE pedido_id = ?
+                """,
+            String.class,
+            pedidoId
+        );
+    }
+
+    private Long quantidadePagamentosSemMotivoRecusa(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM tb_pagamentos
+                WHERE pedido_id = ?
+                  AND motivo_recusa IS NULL
+                """,
+            Long.class,
+            pedidoId
+        );
+    }
+
     private String statusDoPedido(UUID pedidoId) {
         return jdbcTemplate.queryForObject(
             """
@@ -413,6 +699,14 @@ class CheckoutIntegrationTest {
             "DELETE FROM historico_pontos"
         );
 
+        /*
+         * O pagamento deve ser removido antes do pedido
+         * devido à chave estrangeira.
+         */
+        jdbcTemplate.update(
+            "DELETE FROM tb_pagamentos"
+        );
+
         jdbcTemplate.update(
             "DELETE FROM tb_pedido_itens"
         );
@@ -425,10 +719,6 @@ class CheckoutIntegrationTest {
             "DELETE FROM tb_pedidos"
         );
 
-        /*
-         * Diferentemente de um UPDATE simples, o UPSERT
-         * também recria a carteira removida pelo teste.
-         */
         jdbcTemplate.update(
             """
                 INSERT INTO carteiras_fidelidade (
