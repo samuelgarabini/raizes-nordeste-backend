@@ -13,25 +13,21 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
-    private final JwtTokenService jwtTokenService;
+    private final AutenticacaoService autenticacaoService;
 
-    public AuthController(JwtTokenService jwtTokenService) {
-        this.jwtTokenService = jwtTokenService;
+    public AuthController(
+        AutenticacaoService autenticacaoService
+    ) {
+        this.autenticacaoService = autenticacaoService;
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponseDTO> login(@RequestBody @Valid LoginRequestDTO loginRequest) {
-        // Mock de autenticação de usuários para ambiente de desenvolvimento/teste
-        Perfil perfil = Perfil.CLIENTE;
-        if ("admin".equalsIgnoreCase(loginRequest.username())) {
-            perfil = Perfil.ADMIN;
-        } else if ("gerente".equalsIgnoreCase(loginRequest.username())) {
-            perfil = Perfil.GERENTE;
-        } else if ("atendente".equalsIgnoreCase(loginRequest.username())) {
-            perfil = Perfil.ATENDENTE;
-        }
+    public ResponseEntity<LoginResponseDTO> login(
+        @RequestBody @Valid LoginRequestDTO request
+    ) {
+        LoginResponseDTO response =
+            autenticacaoService.autenticar(request);
 
-        String token = jwtTokenService.gerarToken(loginRequest.username(), perfil);
-        return ResponseEntity.ok(new LoginResponseDTO(token, jwtTokenService.getExpirationMs()));
+        return ResponseEntity.ok(response);
     }
 }
