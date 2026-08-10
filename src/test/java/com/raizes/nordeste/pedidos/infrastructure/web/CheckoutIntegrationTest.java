@@ -66,6 +66,11 @@ class CheckoutIntegrationTest {
 
         assertThat(pontosDoCliente()).isEqualTo(55);
 
+        assertCreditoRegistrado(
+            pedidoId,
+            5
+        );
+
         mockMvc.perform(
                 post(
                     "/api/v1/pedidos/{id}/checkout",
@@ -77,6 +82,58 @@ class CheckoutIntegrationTest {
                 .value("CHECKOUT_NAO_PERMITIDO"));
 
         assertThat(pontosDoCliente()).isEqualTo(55);
+
+        /*
+         * Mesmo após a segunda tentativa de checkout,
+         * deve existir somente um crédito para o pedido.
+         */
+        assertCreditoRegistrado(
+            pedidoId,
+            5
+        );
+    }
+
+    @Test
+    void deveCriarCarteiraQuandoClienteAindaNaoPossuiUma()
+        throws Exception {
+
+        jdbcTemplate.update(
+            """
+                DELETE FROM carteiras_fidelidade
+                WHERE cliente_id = ?::uuid
+                """,
+            CLIENTE_ID
+        );
+
+        assertThat(quantidadeCarteirasDoCliente())
+            .isZero();
+
+        UUID pedidoId = criarPedidoPadrao();
+
+        mockMvc.perform(
+                post(
+                    "/api/v1/pedidos/{id}/checkout",
+                    pedidoId
+                )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status").value("PAGO"))
+            .andExpect(jsonPath("$.valorTotal").value(58.3));
+
+        assertThat(quantidadeCarteirasDoCliente())
+            .isEqualTo(1L);
+
+        /*
+         * A carteira foi criada com zero pontos e recebeu
+         * cinco pontos pelo pedido de R$ 58,30.
+         */
+        assertThat(pontosDoCliente())
+            .isEqualTo(5);
+
+        assertCreditoRegistrado(
+            pedidoId,
+            5
+        );
     }
 
     @Test
@@ -94,6 +151,8 @@ class CheckoutIntegrationTest {
             .andExpect(status().isNotFound())
             .andExpect(jsonPath("$.error")
                 .value("PEDIDO_NAO_ENCONTRADO"));
+
+        assertNenhumCreditoRegistrado(pedidoId);
     }
 
     @Test
@@ -119,7 +178,10 @@ class CheckoutIntegrationTest {
         assertThat(statusDoPedido(pedidoId))
             .isEqualTo("AGUARDANDO_PAGAMENTO");
 
-        assertThat(pontosDoCliente()).isEqualTo(50);
+        assertThat(pontosDoCliente())
+            .isEqualTo(50);
+
+        assertNenhumCreditoRegistrado(pedidoId);
     }
 
     @Test
@@ -142,7 +204,17 @@ class CheckoutIntegrationTest {
             .andExpect(jsonPath("$.status").value("PAGO"))
             .andExpect(jsonPath("$.valorTotal").value(52.47));
 
-        assertThat(pontosDoCliente()).isEqualTo(55);
+        /*
+         * O valor com desconto continua gerando cinco pontos:
+         * R$ 52,47 / R$ 10,00 = 5 pontos inteiros.
+         */
+        assertThat(pontosDoCliente())
+            .isEqualTo(55);
+
+        assertCreditoRegistrado(
+            pedidoId,
+            5
+        );
     }
 
     @Test
@@ -177,7 +249,10 @@ class CheckoutIntegrationTest {
         assertThat(statusDoPedido(pedidoId))
             .isEqualTo("AGUARDANDO_PAGAMENTO");
 
-        assertThat(pontosDoCliente()).isEqualTo(50);
+        assertThat(pontosDoCliente())
+            .isEqualTo(50);
+
+        assertNenhumCreditoRegistrado(pedidoId);
     }
 
     private UUID criarPedidoPadrao() throws Exception {
@@ -228,6 +303,30 @@ class CheckoutIntegrationTest {
         );
     }
 
+    private void assertCreditoRegistrado(
+        UUID pedidoId,
+        int pontosEsperados
+    ) {
+        assertThat(quantidadeHistoricosDoPedido(pedidoId))
+            .isEqualTo(1L);
+
+        assertThat(pontosRegistradosNoHistorico(pedidoId))
+            .isEqualTo((long) pontosEsperados);
+
+        assertThat(tipoOperacaoDoHistorico(pedidoId))
+            .isEqualTo("CREDITO");
+    }
+
+    private void assertNenhumCreditoRegistrado(
+        UUID pedidoId
+    ) {
+        assertThat(quantidadeHistoricosDoPedido(pedidoId))
+            .isZero();
+
+        assertThat(pontosRegistradosNoHistorico(pedidoId))
+            .isZero();
+    }
+
     private Integer pontosDoCliente() {
         return jdbcTemplate.queryForObject(
             """
@@ -237,6 +336,63 @@ class CheckoutIntegrationTest {
                 """,
             Integer.class,
             CLIENTE_ID
+        );
+    }
+
+    private Long quantidadeCarteirasDoCliente() {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM carteiras_fidelidade
+                WHERE cliente_id = ?::uuid
+                """,
+            Long.class,
+            CLIENTE_ID
+        );
+    }
+
+    private Long quantidadeHistoricosDoPedido(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT COUNT(*)
+                FROM historico_pontos
+                WHERE pedido_id = ?
+                """,
+            Long.class,
+            pedidoId
+        );
+    }
+
+    private Long pontosRegistradosNoHistorico(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT COALESCE(
+                    SUM(pontos_alterados),
+                    0
+                )
+                FROM historico_pontos
+                WHERE pedido_id = ?
+                """,
+            Long.class,
+            pedidoId
+        );
+    }
+
+    private String tipoOperacaoDoHistorico(
+        UUID pedidoId
+    ) {
+        return jdbcTemplate.queryForObject(
+            """
+                SELECT tipo_operacao
+                FROM historico_pontos
+                WHERE pedido_id = ?
+                """,
+            String.class,
+            pedidoId
         );
     }
 
@@ -269,33 +425,60 @@ class CheckoutIntegrationTest {
             "DELETE FROM tb_pedidos"
         );
 
-        jdbcTemplate.update("""
-            UPDATE carteiras_fidelidade
-            SET pontos_acumulados = 50,
-                ultima_atualizacao = CURRENT_TIMESTAMP
-            WHERE cliente_id =
-                'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
-            """);
+        /*
+         * Diferentemente de um UPDATE simples, o UPSERT
+         * também recria a carteira removida pelo teste.
+         */
+        jdbcTemplate.update(
+            """
+                INSERT INTO carteiras_fidelidade (
+                    cliente_id,
+                    pontos_acumulados,
+                    ultima_atualizacao
+                )
+                VALUES (
+                    ?::uuid,
+                    50,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (cliente_id)
+                DO UPDATE SET
+                    pontos_acumulados = 50,
+                    ultima_atualizacao =
+                        CURRENT_TIMESTAMP
+                """,
+            CLIENTE_ID
+        );
 
-        jdbcTemplate.update("""
-            UPDATE campanhas
-            SET ativo = TRUE,
-                data_inicio =
-                    CURRENT_TIMESTAMP - INTERVAL '1 day',
-                data_fim =
-                    CURRENT_TIMESTAMP + INTERVAL '30 days'
-            WHERE codigo_promocional = 'BEMVINDO10'
-            """);
+        jdbcTemplate.update(
+            """
+                UPDATE campanhas
+                SET ativo = TRUE,
+                    data_inicio =
+                        CURRENT_TIMESTAMP
+                        - INTERVAL '1 day',
+                    data_fim =
+                        CURRENT_TIMESTAMP
+                        + INTERVAL '30 days'
+                WHERE codigo_promocional =
+                    'BEMVINDO10'
+                """
+        );
 
-        jdbcTemplate.update("""
-            UPDATE tb_estoques estoque
-            SET quantidade = CASE
-                    WHEN produto.disponivel = TRUE THEN 50
-                    ELSE 0
-                END,
-                atualizado_em = CURRENT_TIMESTAMP
-            FROM tb_produtos produto
-            WHERE produto.id = estoque.produto_id
-            """);
+        jdbcTemplate.update(
+            """
+                UPDATE tb_estoques estoque
+                SET quantidade = CASE
+                        WHEN produto.disponivel = TRUE
+                            THEN 50
+                        ELSE 0
+                    END,
+                    atualizado_em =
+                        CURRENT_TIMESTAMP
+                FROM tb_produtos produto
+                WHERE produto.id =
+                    estoque.produto_id
+                """
+        );
     }
 }
