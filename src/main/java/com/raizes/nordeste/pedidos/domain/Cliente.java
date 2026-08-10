@@ -1,27 +1,56 @@
 package com.raizes.nordeste.pedidos.domain;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.raizes.nordeste.pedidos.infrastructure.security.AesEncryptorConverter;
-import jakarta.persistence.*;
-import lombok.Data;
+import com.raizes.nordeste.pedidos.infrastructure.security.ClienteSecurityListener;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.util.UUID;
 
 @Entity
 @Table(name = "clientes")
-@Data
+@EntityListeners(ClienteSecurityListener.class)
+@Getter
+@Setter
+@NoArgsConstructor
 public class Cliente {
 
     @Id
     private UUID id;
 
-    @Column(nullable = false)
+    @Column(
+        nullable = false,
+        length = 150
+    )
     private String nome;
 
-    // AQUI: Você coloca o @Convert logo acima do campo sensível
     @Convert(converter = AesEncryptorConverter.class)
-    @Column(nullable = false, unique = true)
-    private String cpf; 
+    @Column(
+        nullable = false,
+        length = 1024
+    )
+    private String cpf;
 
     @Convert(converter = AesEncryptorConverter.class)
-    @Column(nullable = false)
+    @Column(
+        nullable = false,
+        length = 1024
+    )
     private String email;
+
+    @JsonIgnore
+    @Column(
+        name = "cpf_fingerprint",
+        length = 64,
+        unique = true
+    )
+    private String cpfFingerprint;
 }

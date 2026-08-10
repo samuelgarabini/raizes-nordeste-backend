@@ -5,14 +5,14 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/raizes_db}
     username: ${SPRING_DATASOURCE_USERNAME:raizes_app}
-    password: ${SPRING_DATASOURCE_PASSWORD:secret_password}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   jpa:
     hibernate:
       ddl-auto: validate
     open-in-view: false
-    show-sql: true
+    show-sql: ${JPA_SHOW_SQL:false}
     properties:
       hibernate:
         format_sql: true
@@ -39,8 +39,12 @@ server:
 api:
   security:
     jwt:
-      secret: ${JWT_SECRET:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}
+      secret: ${JWT_SECRET}
       expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+    encryption:
+      key: ${DATA_ENCRYPTION_KEY}
+      fingerprint-key: ${DATA_FINGERPRINT_KEY}
 
 springdoc:
   swagger-ui:
