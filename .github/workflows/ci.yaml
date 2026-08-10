@@ -13,7 +13,7 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-        env:
+    env:
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/raizes_db
       SPRING_DATASOURCE_USERNAME: raizes_app
       SPRING_DATASOURCE_PASSWORD: secret_password
