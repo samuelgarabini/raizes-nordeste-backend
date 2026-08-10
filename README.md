@@ -1,62 +1,425 @@
-# Rede Raízes do Nordeste - Back-End API
+# Rede Raízes do Nordeste — Back-End API
 
-Plataforma de back-end distribuída, escalável e multi-tenant para gerenciamento de checkout e pedidos multicanal da rede de franquias **Raízes do Nordeste**.
+[![Continuous Integration](https://github.com/samuelgarabini/raizes-nordeste-backend/actions/workflows/ci.yaml/badge.svg)](https://github.com/samuelgarabini/raizes-nordeste-backend/actions/workflows/ci.yaml)
 
----
+API REST desenvolvida para o projeto multidisciplinar da rede fictícia de lanchonetes **Raízes do Nordeste**.
 
-## 🚀 Tecnologias Utilizadas
+A aplicação implementa autenticação JWT, cardápio por unidade, pedidos multicanal, controle de estoque, checkout com pagamento simulado, campanhas promocionais, fidelidade, ciclo de status, proteção de dados pessoais e auditoria de operações sensíveis.
 
-- **Java 17 LTS** e **Spring Boot 3**
-- **PostgreSQL 15** com **Row-Level Security (RLS)** para isolamento multi-tenant
-- **Redis** para cache distribuído
-- **RabbitMQ** para mensageria assíncrona (Integração com KDS)
-- **Flyway** para migrações automatizadas do banco de dados
-- **Docker** e **Docker Compose** para orquestração de contêineres
-- **OpenAPI / Swagger** para documentação de rotas
-- **GitHub Actions** para automação de CI/CD
+## Tecnologias
 
----
+- Java 17
+- Spring Boot 3.5
+- Spring Web
+- Spring Data JPA e Hibernate
+- Spring Security
+- JWT
+- PostgreSQL 15
+- Flyway
+- OpenAPI 3 e Swagger UI
+- JUnit 5, MockMvc e AssertJ
+- Docker e Docker Compose
+- GitHub Actions
 
-## 🛠️ Como Executar o Projeto Localmente
+O Docker Compose também provisiona Redis, RabbitMQ, Kafka e Kafka UI para evolução da arquitetura. O funcionamento correto do fluxo principal, entretanto, não depende atualmente desses componentes.
 
-### Pré-requisitos
-- Docker Desktop e Docker Compose instalados
-- Git instalado
+## Funcionalidades implementadas
 
-### Passo a Passo
+- Autenticação com usuários persistidos no PostgreSQL.
+- Senhas armazenadas com BCrypt.
+- Emissão e validação de tokens JWT.
+- Autorização baseada nos perfis `ADMIN`, `GERENTE`, `ATENDENTE` e `CLIENTE`.
+- Consulta pública do cardápio por unidade.
+- Criação de pedidos com os canais:
+  - `APP`
+  - `TOTEM`
+  - `BALCAO`
+  - `PICKUP`
+  - `WEB`
+- Validação de unidade, cliente, produtos, quantidades e estoque.
+- Cálculo do preço no servidor.
+- Persistência dos itens e valores do pedido.
+- Consulta detalhada de pedido.
+- Listagem paginada com filtros por canal, status e unidade.
+- Checkout idempotente.
+- Pagamento mock aprovado ou recusado.
+- Aplicação de campanha promocional.
+- Baixa e restauração transacional de estoque.
+- Crédito de pontos e histórico de fidelidade.
+- Atualização controlada do ciclo de status do pedido.
+- Respostas de erro padronizadas.
+- Criptografia AES-256-GCM dos dados pessoais.
+- Impressão digital HMAC-SHA-256 para busca e unicidade do CPF.
+- Auditoria de login, checkout e alteração de status.
+- Migrações e dados iniciais controlados pelo Flyway.
+- Testes unitários e de integração automatizados.
 
-1. **Clonar o repositório:**
-   ```bash
-   git clone [https://github.com/samuelgarabini/raizes-nordeste-backend.git](https://github.com/samuelgarabini/raizes-nordeste-backend.git)
-   cd raizes-nordeste-backend
+## Arquitetura
 
-2. Configurar as Variáveis de Ambiente:
-    Copie o modelo .env.example para criar o seu arquivo de configurações locais .env:
-    Bash
+O projeto adota uma organização em camadas:
 
-    cp .env.example .env
+```text
+src/main/java/com/raizes/nordeste/
+└── pedidos/
+    ├── application/       Casos de uso e DTOs
+    ├── domain/            Entidades e enums de domínio
+    ├── service/           Serviços de regras de negócio
+    ├── repository/        Interfaces de persistência
+    ├── infrastructure/    Segurança, auditoria, web e detalhes técnicos
+    ├── presentation/      Controladores e respostas da API
+    └── controller/        Controladores de recursos complementares
+```
 
-    (Ou crie o arquivo .env manualmente na raiz copiando os valores do .env.example)
+As alterações do banco ficam em:
 
-3. Subir os Contêineres via Docker Compose:
-    No terminal, dentro da pasta raiz do projeto, execute o comando:
-    Bash
+```text
+src/main/resources/db/migration/
+```
 
-    docker-compose up -d --build
+O Hibernate utiliza `ddl-auto: validate`. Portanto, o Flyway é responsável por criar e evoluir o esquema, enquanto o Hibernate verifica a compatibilidade entre as entidades e o banco.
 
-    Este comando irá provisionar as instâncias de PostgreSQL, Redis e RabbitMQ, compilar o código Java e executar automaticamente as migrações SQL pelo Flyway.
+## Pré-requisitos
 
-4. Acessar a Documentação Interativa (Swagger):
-    Com a aplicação em execução, acesse a URL no seu navegador para visualizar e testar os endpoints:
-    http://localhost:8080/swagger-ui/index.html
+Para executar todo o ambiente usando contêineres:
 
+- Git
+- Docker Desktop
+- Docker Compose
 
-🧪 Validação e Testes com Postman
+Não é necessário instalar Java ou Maven para iniciar a aplicação pelo Docker.
 
-Para executar os testes das rotas da API:
+## Configuração das variáveis de ambiente
 
-    1. Abra o aplicativo Postman.
+Na raiz do projeto, copie o arquivo de exemplo:
 
-    2. Clique na opção Import e selecione o arquivo docs/postman_collection.json localizado no projeto.
+```powershell
+Copy-Item .env.example .env
+```
 
-    3. Execute as requisições importadas para validar os cenários de teste automatizados (autenticação JWT, criação de pedidos multicanal, simulação de pagamento mock, isolamento RLS e conformidade com LGPD).
+Edite o `.env` e substitua os valores de demonstração.
+
+As três chaves de segurança devem ser diferentes. Para gerar uma chave aleatória de 32 bytes em Base64 usando Docker, execute o comando abaixo três vezes:
+
+```powershell
+docker run --rm alpine:3.20 sh -c "head -c 32 /dev/urandom | base64"
+```
+
+Use uma saída diferente em cada variável:
+
+```dotenv
+JWT_SECRET=primeira_saida
+DATA_ENCRYPTION_KEY=segunda_saida
+DATA_FINGERPRINT_KEY=terceira_saida
+```
+
+O arquivo `.env` contém valores locais e não deve ser enviado ao Git. Apenas o `.env.example` deve permanecer versionado.
+
+## Inicialização da aplicação
+
+Valide a configuração:
+
+```powershell
+docker compose config --quiet
+$LASTEXITCODE
+```
+
+O resultado esperado é `0`.
+
+Compile a imagem e inicie todos os serviços:
+
+```powershell
+docker compose up -d --build
+```
+
+Confira o estado dos contêineres:
+
+```powershell
+docker compose ps
+```
+
+Acompanhe os logs da API:
+
+```powershell
+docker compose logs -f api-backend
+```
+
+Use `Ctrl+C` para sair da visualização dos logs sem encerrar os contêineres.
+
+## Portas locais
+
+| Serviço | Endereço |
+|---|---|
+| API | `http://localhost:8081` |
+| Swagger UI | `http://localhost:8081/swagger-ui/index.html` |
+| Especificação OpenAPI | `http://localhost:8081/v3/api-docs` |
+| PostgreSQL | `localhost:5433` |
+| Redis | `localhost:6379` |
+| RabbitMQ | `localhost:5672` |
+| RabbitMQ Management | `http://localhost:15672` |
+| Kafka | `localhost:9092` |
+| Kafka UI | `http://localhost:8085` |
+
+A porta externa da API pode ser alterada pela variável `API_PORT`.
+
+## Usuários de demonstração
+
+As migrações criam quatro usuários exclusivamente para testes locais:
+
+| Usuário | Senha | Perfil |
+|---|---|---|
+| `admin` | `Senha@123` | `ADMIN` |
+| `gerente` | `Senha@123` | `GERENTE` |
+| `atendente` | `Senha@123` | `ATENDENTE` |
+| `cliente` | `Senha@123` | `CLIENTE` |
+
+Essas credenciais são dados de demonstração e não devem ser usadas em produção.
+
+## Autenticação
+
+Endpoint:
+
+```http
+POST /api/v1/auth/login
+```
+
+Exemplo:
+
+```json
+{
+  "username": "cliente",
+  "password": "Senha@123"
+}
+```
+
+Resposta:
+
+```json
+{
+  "token": "token-jwt",
+  "tipo": "Bearer",
+  "expiracaoEm": 86400000
+}
+```
+
+Nas rotas protegidas, envie:
+
+```http
+Authorization: Bearer token-jwt
+```
+
+## Endpoints principais
+
+| Método | Rota | Acesso | Finalidade |
+|---|---|---|---|
+| `POST` | `/api/v1/auth/login` | Público | Autenticar e emitir JWT |
+| `GET` | `/api/v1/unidades/{unidadeId}/cardapio` | Público | Consultar cardápio disponível |
+| `GET` | `/api/campanhas` | Autenticado | Listar campanhas |
+| `POST` | `/api/v1/pedidos` | Autenticado | Criar pedido |
+| `GET` | `/api/v1/pedidos` | Autenticado | Listar e filtrar pedidos |
+| `GET` | `/api/v1/pedidos/{id}` | Autenticado | Consultar detalhes |
+| `POST` | `/api/v1/pedidos/{id}/checkout` | Autenticado | Processar pagamento mock |
+| `PATCH` | `/api/v1/pedidos/{id}/status` | `ADMIN`, `GERENTE` ou `ATENDENTE` | Atualizar status |
+| `GET` | `/api/v1/pedidos/health` | Autenticado | Verificar a API |
+
+O Swagger apresenta o contrato navegável da aplicação. A coleção Postman fica em:
+
+```text
+docs/postman_collection.json
+```
+
+## Exemplo de criação de pedido
+
+```http
+POST /api/v1/pedidos
+Authorization: Bearer token-jwt
+Content-Type: application/json
+```
+
+```json
+{
+  "clienteId": "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11",
+  "unidadeId": "550e8400-e29b-41d4-a716-446655440000",
+  "canalPedido": "APP",
+  "itens": [
+    {
+      "produtoId": 101,
+      "quantidade": 2
+    },
+    {
+      "produtoId": 104,
+      "quantidade": 1
+    }
+  ]
+}
+```
+
+Os preços não são recebidos do cliente. A API consulta os produtos no banco e calcula os valores no servidor.
+
+## Checkout com pagamento mock
+
+Exemplo de pagamento aprovado:
+
+```http
+POST /api/v1/pedidos/{id}/checkout?resultadoPagamento=APROVADO
+```
+
+Exemplo de pagamento recusado:
+
+```http
+POST /api/v1/pedidos/{id}/checkout?resultadoPagamento=RECUSADO
+```
+
+Aplicação opcional de cupom:
+
+```http
+POST /api/v1/pedidos/{id}/checkout?codigoPromocional=BEMVINDO10
+```
+
+O cupom `BEMVINDO10` concede 10% de desconto para pedidos que atendam ao valor mínimo configurado na campanha.
+
+## Testes automatizados
+
+A suíte possui testes unitários e de integração para autenticação, autorização, cardápio, pedidos, checkout, filtros, detalhes, ciclo de status, criptografia, fingerprints e auditoria.
+
+Com Maven instalado:
+
+```powershell
+mvn test
+```
+
+### Execução dos testes pelo Docker no Windows
+
+Crie uma base separada para os testes:
+
+```powershell
+docker compose exec -T postgres createdb -U raizes_app raizes_test
+```
+
+Se `raizes_test` já existir, não é necessário criá-la novamente.
+
+Informe a senha utilizada no `.env`:
+
+```powershell
+$postgresPassword = Read-Host "Informe a senha do PostgreSQL"
+```
+
+Execute:
+
+```powershell
+docker run --rm `
+  --env-file .env `
+  --mount "type=bind,source=$($PWD.Path),target=/workspace" `
+  --mount "type=volume,source=raizes-maven-cache,target=/root/.m2" `
+  --workdir /workspace `
+  --env SPRING_DATASOURCE_URL=jdbc:postgresql://host.docker.internal:5433/raizes_test `
+  --env SPRING_DATASOURCE_USERNAME=raizes_app `
+  --env SPRING_DATASOURCE_PASSWORD=$postgresPassword `
+  --env SPRING_REDIS_HOST=host.docker.internal `
+  --env SPRING_REDIS_PORT=6379 `
+  --env SPRING_DATA_REDIS_DATABASE=15 `
+  --env SPRING_RABBITMQ_HOST=host.docker.internal `
+  --env SPRING_RABBITMQ_PORT=5672 `
+  --env SPRING_RABBITMQ_USERNAME=guest `
+  --env SPRING_RABBITMQ_PASSWORD=guest `
+  maven:3.9.11-eclipse-temurin-17 `
+  mvn -q test
+$LASTEXITCODE
+```
+
+O resultado esperado é:
+
+```text
+0
+```
+
+Os relatórios são gerados em:
+
+```text
+target/surefire-reports/
+```
+
+Para visualizar o resumo no PowerShell:
+
+```powershell
+Get-ChildItem target\surefire-reports\*.txt |
+    Select-String "Tests run:"
+```
+
+## Integração contínua
+
+O workflow `.github/workflows/ci.yaml` executa automaticamente:
+
+1. Compilação com Java 17 e Maven.
+2. Testes unitários e de integração.
+3. Construção da imagem Docker.
+
+O workflow é acionado em pull requests direcionadas à `main` e em pushes para `main` ou `develop`.
+
+## Banco de dados
+
+As migrações Flyway são executadas automaticamente durante a inicialização.
+
+O banco inclui, entre outras, as seguintes estruturas:
+
+- unidades;
+- clientes;
+- categorias e produtos;
+- estoques por unidade;
+- pedidos e itens;
+- pagamentos;
+- campanhas;
+- carteiras e histórico de fidelidade;
+- usuários;
+- outbox;
+- auditoria de segurança.
+
+Para reiniciar todo o ambiente preservando os dados:
+
+```powershell
+docker compose down
+docker compose up -d
+```
+
+Para apagar também o volume do PostgreSQL e recriar o banco desde a primeira migration:
+
+```powershell
+docker compose down -v
+docker compose up -d --build
+```
+
+Atenção: `docker compose down -v` remove definitivamente os dados locais do banco.
+
+## Segurança e LGPD
+
+A implementação contém:
+
+- autenticação stateless com JWT;
+- autorização por perfil;
+- BCrypt para senhas;
+- AES-256-GCM com IV aleatório para CPF e e-mail;
+- HMAC-SHA-256 para fingerprint do CPF;
+- segredos externos ao repositório;
+- respostas `401` e `403` padronizadas;
+- auditoria de operações sensíveis;
+- logs sem exposição direta de credenciais ou dados pessoais.
+
+A rota demonstrativa `/api/v1/lgpd/anonimizar` ainda não executa anonimização persistente. Ela não deve ser apresentada como implementação completa do direito de eliminação.
+
+## Limitações e evoluções futuras
+
+- Implementar anonimização persistente e gestão de consentimento.
+- Integrar efetivamente Redis ao cache do cardápio.
+- Publicar eventos de domínio por RabbitMQ ou Kafka.
+- Aplicar isolamento multi-tenant completo associado à identidade autenticada.
+- Adicionar métricas de observabilidade e testes formais de carga.
+- Evoluir relatórios gerenciais e operações administrativas.
+
+## Encerramento do ambiente
+
+```powershell
+docker compose down
+```
+
+Repositório:
+
+<https://github.com/samuelgarabini/raizes-nordeste-backend>
