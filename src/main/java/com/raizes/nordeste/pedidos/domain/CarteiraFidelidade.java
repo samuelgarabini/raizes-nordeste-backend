@@ -3,7 +3,6 @@ package com.raizes.nordeste.pedidos.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "carteiras_fidelidade")
@@ -15,11 +14,11 @@ import java.util.UUID;
 public class CarteiraFidelidade {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(name = "cliente_id", nullable = false, unique = true)
-    private UUID clienteId;
+    private java.util.UUID clienteId;
 
     @Column(name = "pontos_acumulados", nullable = false)
     private Integer pontosAcumulados = 0;
