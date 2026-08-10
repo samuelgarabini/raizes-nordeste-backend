@@ -13,13 +13,21 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
-    env:
+        env:
       SPRING_DATASOURCE_URL: jdbc:postgresql://localhost:5432/raizes_db
       SPRING_DATASOURCE_USERNAME: raizes_app
       SPRING_DATASOURCE_PASSWORD: secret_password
       SPRING_REDIS_HOST: localhost
       SPRING_RABBITMQ_HOST: localhost
-      JWT_SECRET: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+      JPA_SHOW_SQL: "false"
+
+      # Valores exclusivos do ambiente automatizado de testes.
+      JWT_SECRET: >-
+        ci-only-jwt-secret-with-at-least-32-bytes-do-not-use
+      DATA_ENCRYPTION_KEY: >-
+        MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      DATA_FINGERPRINT_KEY: >-
+        ZmVkY2JhOTg3NjU0MzIxMGZlZGNiYTk4NzY1NDMyMTA=
 
     services:
       postgres:

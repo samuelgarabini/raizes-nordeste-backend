@@ -13,28 +13,43 @@ import java.util.Date;
 @Service
 public class JwtTokenService {
 
-    @Value("${api.security.jwt.secret:404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970}")
-    private String secret;
+    private static final int MINIMUM_SECRET_BYTES = 32;
 
-    @Value("${api.security.jwt.expiration-ms:86400000}")
-    private long expirationMs;
+    private final SecretKey signingKey;
 
-    private SecretKey getSigningKey() {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        return Keys.hmacShaKeyFor(keyBytes);
+    private final long expirationMs;
+
+    public JwtTokenService(
+        @Value("${api.security.jwt.secret}")
+            String secret,
+        @Value("${api.security.jwt.expiration-ms}")
+            long expirationMs
+    ) {
+        validarConfiguracao(secret, expirationMs);
+
+        this.signingKey = Keys.hmacShaKeyFor(
+            secret.getBytes(StandardCharsets.UTF_8)
+        );
+        this.expirationMs = expirationMs;
     }
 
-    public String gerarToken(String username, Perfil perfil) {
+    public String gerarToken(
+        String username,
+        Perfil perfil
+    ) {
         Date agora = new Date();
-        Date expiracao = new Date(agora.getTime() + expirationMs);
+
+        Date expiracao = new Date(
+            agora.getTime() + expirationMs
+        );
 
         return Jwts.builder()
-                .subject(username)
-                .claim("role", perfil.name())
-                .issuedAt(agora)
-                .expiration(expiracao)
-                .signWith(getSigningKey())
-                .compact();
+            .subject(username)
+            .claim("role", perfil.name())
+            .issuedAt(agora)
+            .expiration(expiracao)
+            .signWith(signingKey)
+            .compact();
     }
 
     public String getUsernameDoToken(String token) {
@@ -42,27 +57,65 @@ public class JwtTokenService {
     }
 
     public String getRoleDoToken(String token) {
-        return getClaims(token).get("role", String.class);
+        return getClaims(token).get(
+            "role",
+            String.class
+        );
     }
 
     public boolean isTokenValido(String token) {
         try {
             Claims claims = getClaims(token);
-            return !claims.getExpiration().before(new Date());
-        } catch (Exception e) {
+
+            return !claims
+                .getExpiration()
+                .before(new Date());
+        } catch (Exception exception) {
             return false;
         }
     }
 
-    private Claims getClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
-    }
-
     public long getExpirationMs() {
         return expirationMs;
+    }
+
+    private Claims getClaims(String token) {
+        return Jwts.parser()
+            .verifyWith(signingKey)
+            .build()
+            .parseSignedClaims(token)
+            .getPayload();
+    }
+
+    private void validarConfiguracao(
+        String secret,
+        long expirationMs
+    ) {
+        if (
+            secret == null
+                || secret.isBlank()
+        ) {
+            throw new IllegalStateException(
+                "JWT_SECRET não foi configurado"
+            );
+        }
+
+        int tamanhoEmBytes = secret
+            .getBytes(StandardCharsets.UTF_8)
+            .length;
+
+        if (tamanhoEmBytes < MINIMUM_SECRET_BYTES) {
+            throw new IllegalStateException(
+                "JWT_SECRET deve possuir pelo menos "
+                    + MINIMUM_SECRET_BYTES
+                    + " bytes"
+            );
+        }
+
+        if (expirationMs <= 0) {
+            throw new IllegalStateException(
+                "JWT_EXPIRATION_MS deve ser maior que zero"
+            );
+        }
     }
 }

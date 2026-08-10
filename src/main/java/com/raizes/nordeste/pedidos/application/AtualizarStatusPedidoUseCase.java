@@ -4,6 +4,8 @@ import com.raizes.nordeste.pedidos.application.dto.AtualizarStatusPedidoCommand;
 import com.raizes.nordeste.pedidos.application.dto.StatusPedidoResponseDTO;
 import com.raizes.nordeste.pedidos.domain.Pedido;
 import com.raizes.nordeste.pedidos.domain.StatusPedido;
+import com.raizes.nordeste.pedidos.infrastructure.audit.AuditoriaOperacaoService;
+import com.raizes.nordeste.pedidos.infrastructure.audit.TipoEventoAuditoria;
 import com.raizes.nordeste.pedidos.infrastructure.exception.BusinessConflictException;
 import com.raizes.nordeste.pedidos.infrastructure.exception.InvalidRequestException;
 import com.raizes.nordeste.pedidos.infrastructure.exception.ResourceNotFoundException;
@@ -12,9 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class AtualizarStatusPedidoUseCase {
+
+    private static final String AUDIT_RESOURCE =
+        "PEDIDO";
 
     private static final Map<
         StatusPedido,
@@ -30,45 +36,78 @@ public class AtualizarStatusPedidoUseCase {
 
     private final PedidoRepository pedidoRepository;
 
+    private final AuditoriaOperacaoService
+        auditoriaOperacaoService;
+
     public AtualizarStatusPedidoUseCase(
-        PedidoRepository pedidoRepository
+        PedidoRepository pedidoRepository,
+        AuditoriaOperacaoService
+            auditoriaOperacaoService
     ) {
         this.pedidoRepository = pedidoRepository;
+        this.auditoriaOperacaoService =
+            auditoriaOperacaoService;
     }
 
     @Transactional
     public StatusPedidoResponseDTO executar(
         AtualizarStatusPedidoCommand command
     ) {
-        validarCommand(command);
+        UUID pedidoId = obterPedidoId(command);
 
-        Pedido pedido = pedidoRepository
-            .findByIdForUpdate(command.pedidoId())
-            .orElseThrow(() ->
-                new ResourceNotFoundException(
-                    "PEDIDO_NAO_ENCONTRADO",
-                    "Pedido não encontrado: "
-                        + command.pedidoId()
+        try {
+            validarCommand(command);
+
+            Pedido pedido = pedidoRepository
+                .findByIdForUpdate(
+                    command.pedidoId()
                 )
+                .orElseThrow(() ->
+                    new ResourceNotFoundException(
+                        "PEDIDO_NAO_ENCONTRADO",
+                        "Pedido não encontrado: "
+                            + command.pedidoId()
+                    )
+                );
+
+            StatusPedido statusAnterior =
+                pedido.getStatus();
+
+            validarTransicao(
+                statusAnterior,
+                command.novoStatus()
             );
 
-        StatusPedido statusAnterior =
-            pedido.getStatus();
+            pedido.setStatus(
+                command.novoStatus()
+            );
 
-        validarTransicao(
-            statusAnterior,
-            command.novoStatus()
-        );
+            pedidoRepository.saveAndFlush(pedido);
 
-        pedido.setStatus(command.novoStatus());
+            StatusPedidoResponseDTO response =
+                new StatusPedidoResponseDTO(
+                    pedido.getId(),
+                    statusAnterior,
+                    pedido.getStatus()
+                );
 
-        pedidoRepository.saveAndFlush(pedido);
+            auditoriaOperacaoService
+                .registrarSucesso(
+                    TipoEventoAuditoria
+                        .ALTERACAO_STATUS_PEDIDO,
+                    AUDIT_RESOURCE,
+                    pedido.getId()
+                );
 
-        return new StatusPedidoResponseDTO(
-            pedido.getId(),
-            statusAnterior,
-            pedido.getStatus()
-        );
+            return response;
+        } catch (RuntimeException exception) {
+            registrarFalhaSemMascararErro(
+                pedidoId,
+                exception
+            );
+
+            throw exception;
+        }
     }
 
     private void validarCommand(
@@ -113,6 +152,34 @@ public class AtualizarStatusPedidoUseCase {
                     + statusAtual
                     + " para "
                     + novoStatus
+            );
+        }
+    }
+
+    private UUID obterPedidoId(
+        AtualizarStatusPedidoCommand command
+    ) {
+        return command == null
+            ? null
+            : command.pedidoId();
+    }
+
+    private void registrarFalhaSemMascararErro(
+        UUID pedidoId,
+        RuntimeException originalException
+    ) {
+        try {
+            auditoriaOperacaoService
+                .registrarFalha(
+                    TipoEventoAuditoria
+                        .ALTERACAO_STATUS_PEDIDO,
+                    AUDIT_RESOURCE,
+                    pedidoId,
+                    originalException
+                );
+        } catch (RuntimeException auditException) {
+            originalException.addSuppressed(
+                auditException
             );
         }
     }

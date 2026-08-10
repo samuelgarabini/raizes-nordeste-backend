@@ -2,6 +2,7 @@ package com.raizes.nordeste.pedidos.infrastructure.security;
 
 import com.raizes.nordeste.pedidos.infrastructure.security.dto.LoginRequestDTO;
 import com.raizes.nordeste.pedidos.infrastructure.security.dto.LoginResponseDTO;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,10 +24,14 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(
-        @RequestBody @Valid LoginRequestDTO request
+        @RequestBody @Valid LoginRequestDTO request,
+        HttpServletRequest httpRequest
     ) {
         LoginResponseDTO response =
-            autenticacaoService.autenticar(request);
+            autenticacaoService.autenticar(
+                request,
+                httpRequest.getRemoteAddr()
+            );
 
         return ResponseEntity.ok(response);
     }
