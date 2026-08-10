@@ -1,6 +1,8 @@
 package com.raizes.nordeste.pedidos.infrastructure.config;
 
 import com.raizes.nordeste.pedidos.infrastructure.security.JwtAuthenticationFilter;
+import com.raizes.nordeste.pedidos.infrastructure.security.RestAccessDeniedHandler;
+import com.raizes.nordeste.pedidos.infrastructure.security.RestAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -22,18 +24,29 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter
         jwtAuthenticationFilter;
 
+    private final RestAuthenticationEntryPoint
+        authenticationEntryPoint;
+
+    private final RestAccessDeniedHandler
+        accessDeniedHandler;
+
     public SecurityConfig(
-        JwtAuthenticationFilter jwtAuthenticationFilter
+        JwtAuthenticationFilter jwtAuthenticationFilter,
+        RestAuthenticationEntryPoint authenticationEntryPoint,
+        RestAccessDeniedHandler accessDeniedHandler
     ) {
         this.jwtAuthenticationFilter =
             jwtAuthenticationFilter;
+        this.authenticationEntryPoint =
+            authenticationEntryPoint;
+        this.accessDeniedHandler =
+            accessDeniedHandler;
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(
         HttpSecurity http
     ) throws Exception {
-
         return http
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session ->
@@ -41,11 +54,16 @@ public class SecurityConfig {
                     SessionCreationPolicy.STATELESS
                 )
             )
+            .exceptionHandling(exceptions ->
+                exceptions
+                    .authenticationEntryPoint(
+                        authenticationEntryPoint
+                    )
+                    .accessDeniedHandler(
+                        accessDeniedHandler
+                    )
+            )
             .authorizeHttpRequests(auth -> auth
-                /*
-                 * Endpoints públicos: autenticação,
-                 * cardápio, documentação e erros.
-                 */
                 .requestMatchers(
                     "/api/v1/auth/**",
                     "/api/v1/unidades/**",
@@ -79,10 +97,6 @@ public class SecurityConfig {
                     "GERENTE"
                 )
 
-                /*
-                 * Esta regra específica deve aparecer
-                 * antes da regra genérica dos pedidos.
-                 */
                 .requestMatchers(
                     HttpMethod.PATCH,
                     "/api/v1/pedidos/*/status"
