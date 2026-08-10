@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS tb_outbox (
+    id UUID PRIMARY KEY,
+    aggregate_type VARCHAR(255) NOT NULL,
+    aggregate_id VARCHAR(255) NOT NULL,
+    type VARCHAR(255) NOT NULL,
+    payload TEXT NOT NULL,
+    created_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    processed BOOLEAN NOT NULL DEFAULT FALSE
+);
