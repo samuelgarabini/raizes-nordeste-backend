@@ -6,9 +6,11 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
@@ -37,6 +39,14 @@ public class Pedido implements Serializable {
     @Column(nullable = false)
     private StatusPedido status;
 
+    @CreationTimestamp
+    @Column(
+        name = "data_hora",
+        nullable = false,
+        updatable = false
+    )
+    private OffsetDateTime dataHora;
+
     public Pedido() {
     }
 
@@ -56,14 +66,23 @@ public class Pedido implements Serializable {
         this.status = status;
     }
 
-    public void aplicarDesconto(BigDecimal valorDesconto) {
+    public void aplicarDesconto(
+        BigDecimal valorDesconto
+    ) {
         if (
             valorDesconto != null
-                && valorDesconto.compareTo(BigDecimal.ZERO) > 0
+                && valorDesconto.compareTo(
+                    BigDecimal.ZERO
+                ) > 0
         ) {
-            this.valorTotal = this.valorTotal.subtract(valorDesconto);
+            this.valorTotal =
+                this.valorTotal.subtract(valorDesconto);
 
-            if (this.valorTotal.compareTo(BigDecimal.ZERO) < 0) {
+            if (
+                this.valorTotal.compareTo(
+                    BigDecimal.ZERO
+                ) < 0
+            ) {
                 this.valorTotal = BigDecimal.ZERO;
             }
         }
@@ -97,7 +116,9 @@ public class Pedido implements Serializable {
         return canalPedido;
     }
 
-    public void setCanalPedido(CanalPedido canalPedido) {
+    public void setCanalPedido(
+        CanalPedido canalPedido
+    ) {
         this.canalPedido = canalPedido;
     }
 
@@ -105,7 +126,9 @@ public class Pedido implements Serializable {
         return valorTotal;
     }
 
-    public void setValorTotal(BigDecimal valorTotal) {
+    public void setValorTotal(
+        BigDecimal valorTotal
+    ) {
         this.valorTotal = valorTotal;
     }
 
@@ -113,7 +136,19 @@ public class Pedido implements Serializable {
         return status;
     }
 
-    public void setStatus(StatusPedido status) {
+    public void setStatus(
+        StatusPedido status
+    ) {
         this.status = status;
+    }
+
+    public OffsetDateTime getDataHora() {
+        return dataHora;
+    }
+
+    public void setDataHora(
+        OffsetDateTime dataHora
+    ) {
+        this.dataHora = dataHora;
     }
 }

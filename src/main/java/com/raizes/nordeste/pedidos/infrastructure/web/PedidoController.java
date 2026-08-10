@@ -6,10 +6,15 @@ import com.raizes.nordeste.pedidos.application.CriarPedidoUseCase;
 import com.raizes.nordeste.pedidos.application.ProcessarCheckoutUseCase;
 import com.raizes.nordeste.pedidos.application.dto.CheckoutResponseDTO;
 import com.raizes.nordeste.pedidos.application.dto.CriarPedidoCommand;
+import com.raizes.nordeste.pedidos.application.dto.FiltroPedidosCommand;
+import com.raizes.nordeste.pedidos.application.dto.PaginaResponseDTO;
 import com.raizes.nordeste.pedidos.application.dto.PedidoCriadoDTO;
+import com.raizes.nordeste.pedidos.application.dto.PedidoResumoDTO;
 import com.raizes.nordeste.pedidos.application.dto.ProcessarCheckoutCommand;
+import com.raizes.nordeste.pedidos.domain.CanalPedido;
 import com.raizes.nordeste.pedidos.domain.Pedido;
 import com.raizes.nordeste.pedidos.domain.StatusPagamento;
+import com.raizes.nordeste.pedidos.domain.StatusPedido;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +26,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URI;
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -110,10 +114,33 @@ public class PedidoController {
     }
 
     @GetMapping
-    public ResponseEntity<List<Pedido>> listarTodos() {
-        return ResponseEntity.ok(
-            buscarTodosPedidosUseCase.executar()
-        );
+    public ResponseEntity<
+        PaginaResponseDTO<PedidoResumoDTO>
+    > listarTodos(
+        @RequestParam(required = false)
+            CanalPedido canalPedido,
+        @RequestParam(required = false)
+            StatusPedido status,
+        @RequestParam(required = false)
+            UUID unidadeId,
+        @RequestParam(defaultValue = "0")
+            int pagina,
+        @RequestParam(defaultValue = "20")
+            int tamanho
+    ) {
+        FiltroPedidosCommand filtros =
+            new FiltroPedidosCommand(
+                canalPedido,
+                status,
+                unidadeId,
+                pagina,
+                tamanho
+            );
+
+        PaginaResponseDTO<PedidoResumoDTO> response =
+            buscarTodosPedidosUseCase.executar(filtros);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
