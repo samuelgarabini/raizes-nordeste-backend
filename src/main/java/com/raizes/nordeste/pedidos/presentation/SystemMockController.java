@@ -11,18 +11,9 @@ import java.util.UUID;
 @RequestMapping("/api/v1")
 public class SystemMockController {
 
-    // 1. Autenticação: POST /api/v1/auth/login
-    @PostMapping("/auth/login")
-    public ResponseEntity<Map<String, Object>> login(@RequestBody Map<String, String> credentials) {
-        return ResponseEntity.ok(Map.of(
-            "token", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mocked_jwt_token_uninter_raizes_nordeste",
-            "tipo", "Bearer",
-            "roles", List.of("ROLE_OPERADOR", "ROLE_ADMIN"),
-            "mensagem", "Autenticação realizada com sucesso (Mock acadêmico)"
-        ));
-    }
+    // A rota POST /api/v1/auth/login agora é tratada exclusivamente pelo AuthController com suporte a JWT.
 
-    // 2. Cardápio: GET /api/v1/unidades/{id}/cardapio
+    // 1. Cardápio: GET /api/v1/unidades/{id}/cardapio
     @GetMapping("/unidades/{id}/cardapio")
     public ResponseEntity<Map<String, Object>> getCardapio(@PathVariable Long id) {
         return ResponseEntity.ok(Map.of(
@@ -37,7 +28,7 @@ public class SystemMockController {
         ));
     }
 
-    // 3. Pagamentos Mock: POST /api/v1/pagamentos/mock
+    // 2. Pagamentos Mock: POST /api/v1/pagamentos/mock
     @PostMapping("/pagamentos/mock")
     public ResponseEntity<Map<String, Object>> processarPagamentoMock(@RequestBody Map<String, Object> request) {
         return ResponseEntity.ok(Map.of(
@@ -49,7 +40,7 @@ public class SystemMockController {
         ));
     }
 
-    // 4. LGPD: DELETE /api/v1/lgpd/anonimizar
+    // 3. LGPD: DELETE /api/v1/lgpd/anonimizar
     @DeleteMapping("/lgpd/anonimizar")
     public ResponseEntity<Map<String, String>> anonimizarDados(@RequestParam(required = false) String clienteId) {
         String idAlvo = clienteId != null ? clienteId : "desconhecido";
