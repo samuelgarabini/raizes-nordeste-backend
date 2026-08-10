@@ -1,9 +1,11 @@
 package com.raizes.nordeste.pedidos.infrastructure.web;
 
+import com.raizes.nordeste.pedidos.application.AtualizarStatusPedidoUseCase;
 import com.raizes.nordeste.pedidos.application.BuscarPedidoPorIdUseCase;
 import com.raizes.nordeste.pedidos.application.BuscarTodosPedidosUseCase;
 import com.raizes.nordeste.pedidos.application.CriarPedidoUseCase;
 import com.raizes.nordeste.pedidos.application.ProcessarCheckoutUseCase;
+import com.raizes.nordeste.pedidos.application.dto.AtualizarStatusPedidoCommand;
 import com.raizes.nordeste.pedidos.application.dto.CheckoutResponseDTO;
 import com.raizes.nordeste.pedidos.application.dto.CriarPedidoCommand;
 import com.raizes.nordeste.pedidos.application.dto.FiltroPedidosCommand;
@@ -12,12 +14,14 @@ import com.raizes.nordeste.pedidos.application.dto.PedidoCriadoDTO;
 import com.raizes.nordeste.pedidos.application.dto.PedidoDetalheDTO;
 import com.raizes.nordeste.pedidos.application.dto.PedidoResumoDTO;
 import com.raizes.nordeste.pedidos.application.dto.ProcessarCheckoutCommand;
+import com.raizes.nordeste.pedidos.application.dto.StatusPedidoResponseDTO;
 import com.raizes.nordeste.pedidos.domain.CanalPedido;
 import com.raizes.nordeste.pedidos.domain.StatusPagamento;
 import com.raizes.nordeste.pedidos.domain.StatusPedido;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -43,11 +47,16 @@ public class PedidoController {
     private final ProcessarCheckoutUseCase
         processarCheckoutUseCase;
 
+    private final AtualizarStatusPedidoUseCase
+        atualizarStatusPedidoUseCase;
+
     public PedidoController(
         CriarPedidoUseCase criarPedidoUseCase,
         BuscarPedidoPorIdUseCase buscarPedidoPorIdUseCase,
         BuscarTodosPedidosUseCase buscarTodosPedidosUseCase,
-        ProcessarCheckoutUseCase processarCheckoutUseCase
+        ProcessarCheckoutUseCase processarCheckoutUseCase,
+        AtualizarStatusPedidoUseCase
+            atualizarStatusPedidoUseCase
     ) {
         this.criarPedidoUseCase = criarPedidoUseCase;
         this.buscarPedidoPorIdUseCase =
@@ -56,6 +65,8 @@ public class PedidoController {
             buscarTodosPedidosUseCase;
         this.processarCheckoutUseCase =
             processarCheckoutUseCase;
+        this.atualizarStatusPedidoUseCase =
+            atualizarStatusPedidoUseCase;
     }
 
     @PostMapping
@@ -109,6 +120,28 @@ public class PedidoController {
 
         CheckoutResponseDTO response =
             processarCheckoutUseCase.executar(command);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<StatusPedidoResponseDTO>
+        atualizarStatus(
+            @PathVariable UUID id,
+            @RequestParam(required = false)
+                StatusPedido novoStatus
+        ) {
+
+        AtualizarStatusPedidoCommand command =
+            new AtualizarStatusPedidoCommand(
+                id,
+                novoStatus
+            );
+
+        StatusPedidoResponseDTO response =
+            atualizarStatusPedidoUseCase.executar(
+                command
+            );
 
         return ResponseEntity.ok(response);
     }

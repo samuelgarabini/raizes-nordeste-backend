@@ -19,41 +19,98 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter
+        jwtAuthenticationFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
-        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+    public SecurityConfig(
+        JwtAuthenticationFilter jwtAuthenticationFilter
+    ) {
+        this.jwtAuthenticationFilter =
+            jwtAuthenticationFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+        HttpSecurity http
+    ) throws Exception {
+
         return http
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos: Auth, Cardápio por Unidade e Swagger
-                        .requestMatchers(
-                                "/api/v1/auth/**",
-                                "/api/v1/unidades/**", // <-- Libera a rota do Cardápio
-                                "/swagger-ui/**",
-                                "/swagger-ui.html",
-                                "/v3/api-docs/**",
-                                "/v3/api-docs",
-                                "/swagger-resources/**",
-                                "/webjars/**",
-                                "/error"
-                        ).permitAll()
-
-                        // Regras de autorização por perfil
-                        .requestMatchers(HttpMethod.GET, "/api/campanhas/**").hasAnyRole("ADMIN", "GERENTE", "ATENDENTE", "CLIENTE")
-                        .requestMatchers(HttpMethod.POST, "/api/campanhas/**").hasAnyRole("ADMIN", "GERENTE")
-                        .requestMatchers("/api/v1/pedidos/**").hasAnyRole("ADMIN", "GERENTE", "ATENDENTE", "CLIENTE")
-
-                        // Qualquer outra rota exige autenticação
-                        .anyRequest().authenticated()
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(
+                    SessionCreationPolicy.STATELESS
                 )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .build();
+            )
+            .authorizeHttpRequests(auth -> auth
+                /*
+                 * Endpoints públicos: autenticação,
+                 * cardápio, documentação e erros.
+                 */
+                .requestMatchers(
+                    "/api/v1/auth/**",
+                    "/api/v1/unidades/**",
+                    "/swagger-ui/**",
+                    "/swagger-ui.html",
+                    "/v3/api-docs/**",
+                    "/v3/api-docs",
+                    "/swagger-resources/**",
+                    "/webjars/**",
+                    "/error"
+                )
+                .permitAll()
+
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/campanhas/**"
+                )
+                .hasAnyRole(
+                    "ADMIN",
+                    "GERENTE",
+                    "ATENDENTE",
+                    "CLIENTE"
+                )
+
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/campanhas/**"
+                )
+                .hasAnyRole(
+                    "ADMIN",
+                    "GERENTE"
+                )
+
+                /*
+                 * Esta regra específica deve aparecer
+                 * antes da regra genérica dos pedidos.
+                 */
+                .requestMatchers(
+                    HttpMethod.PATCH,
+                    "/api/v1/pedidos/*/status"
+                )
+                .hasAnyRole(
+                    "ADMIN",
+                    "GERENTE",
+                    "ATENDENTE"
+                )
+
+                .requestMatchers(
+                    "/api/v1/pedidos/**"
+                )
+                .hasAnyRole(
+                    "ADMIN",
+                    "GERENTE",
+                    "ATENDENTE",
+                    "CLIENTE"
+                )
+
+                .anyRequest()
+                .authenticated()
+            )
+            .addFilterBefore(
+                jwtAuthenticationFilter,
+                UsernamePasswordAuthenticationFilter.class
+            )
+            .build();
     }
 
     @Bean
