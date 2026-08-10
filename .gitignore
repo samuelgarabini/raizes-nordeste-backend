@@ -7,10 +7,6 @@
 target/
 *.class
 
-# Node e TypeScript
-node_modules/
-dist/
-
 # Arquivos compactados
 *.zip
 
