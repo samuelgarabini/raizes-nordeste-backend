@@ -31,16 +31,17 @@ public class SecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
-                        // Endpoints públicos: Auth e todos os recursos necessários do Swagger/OpenAPI
+                        // Endpoints públicos: Auth, Cardápio por Unidade e Swagger
                         .requestMatchers(
                                 "/api/v1/auth/**",
+                                "/api/v1/unidades/**", // <-- Libera a rota do Cardápio
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
                                 "/v3/api-docs",
                                 "/swagger-resources/**",
                                 "/webjars/**",
-                                "/error" // Permite o despachante de erros interno do Spring Boot
+                                "/error"
                         ).permitAll()
 
                         // Regras de autorização por perfil
