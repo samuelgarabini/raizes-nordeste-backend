@@ -9,10 +9,10 @@ import com.raizes.nordeste.pedidos.application.dto.CriarPedidoCommand;
 import com.raizes.nordeste.pedidos.application.dto.FiltroPedidosCommand;
 import com.raizes.nordeste.pedidos.application.dto.PaginaResponseDTO;
 import com.raizes.nordeste.pedidos.application.dto.PedidoCriadoDTO;
+import com.raizes.nordeste.pedidos.application.dto.PedidoDetalheDTO;
 import com.raizes.nordeste.pedidos.application.dto.PedidoResumoDTO;
 import com.raizes.nordeste.pedidos.application.dto.ProcessarCheckoutCommand;
 import com.raizes.nordeste.pedidos.domain.CanalPedido;
-import com.raizes.nordeste.pedidos.domain.Pedido;
 import com.raizes.nordeste.pedidos.domain.StatusPagamento;
 import com.raizes.nordeste.pedidos.domain.StatusPedido;
 import jakarta.validation.Valid;
@@ -144,12 +144,13 @@ public class PedidoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Pedido> buscarPorId(
+    public ResponseEntity<PedidoDetalheDTO> buscarPorId(
         @PathVariable UUID id
     ) {
-        return ResponseEntity.ok(
-            buscarPedidoPorIdUseCase.executar(id)
-        );
+        PedidoDetalheDTO response =
+            buscarPedidoPorIdUseCase.executar(id);
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/health")
