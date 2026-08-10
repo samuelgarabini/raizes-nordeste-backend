@@ -3,7 +3,6 @@ package com.raizes.nordeste.pedidos.presentation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -12,21 +11,9 @@ import java.util.UUID;
 public class SystemMockController {
 
     // A rota POST /api/v1/auth/login agora é tratada exclusivamente pelo AuthController com suporte a JWT.
-
-    // 1. Cardápio: GET /api/v1/unidades/{id}/cardapio
-    @GetMapping("/unidades/{id}/cardapio")
-    public ResponseEntity<Map<String, Object>> getCardapio(@PathVariable Long id) {
-        return ResponseEntity.ok(Map.of(
-            "unidadeId", id,
-            "nomeUnidade", "Raízes do Nordeste - Matriz",
-            "itens", List.of(
-                Map.of("id", 1, "nome", "Carne de Sol com Mandioca", "preco", 49.90, "categoria", "Pratos Principais"),
-                Map.of("id", 2, "nome", "Baião de Dois Completo", "preco", 39.90, "categoria", "Pratos Principais"),
-                Map.of("id", 3, "nome", "Cartola Pernambucana", "preco", 18.00, "categoria", "Sobremesas"),
-                Map.of("id", 4, "nome", "Cerveja Artesanal de Rapadura", "preco", 14.90, "categoria", "Bebidas")
-            )
-        ));
-    }
+    
+    // ROTA DE CARDÁPIO REMOVIDA DAQUI: 
+    // Agora ela é gerenciada exclusivamente e de forma real pelo CardapioController + Redis.
 
     // 2. Pagamentos Mock: POST /api/v1/pagamentos/mock
     @PostMapping("/pagamentos/mock")

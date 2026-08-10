@@ -2,13 +2,12 @@ package com.raizes.nordeste.pedidos.infrastructure.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.security.Key;
 import java.util.Date;
 
 @Service
@@ -20,7 +19,7 @@ public class JwtTokenService {
     @Value("${api.security.jwt.expiration-ms:86400000}")
     private long expirationMs;
 
-    private Key getSigningKey() {
+    private SecretKey getSigningKey() {
         byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
         return Keys.hmacShaKeyFor(keyBytes);
     }
@@ -30,11 +29,11 @@ public class JwtTokenService {
         Date expiracao = new Date(agora.getTime() + expirationMs);
 
         return Jwts.builder()
-                .setSubject(username)
+                .subject(username)
                 .claim("role", perfil.name())
-                .setIssuedAt(agora)
-                .setExpiration(expiracao)
-                .signWith(getSigningKey(), SignatureAlgorithm.HS256)
+                .issuedAt(agora)
+                .expiration(expiracao)
+                .signWith(getSigningKey())
                 .compact();
     }
 
@@ -56,11 +55,11 @@ public class JwtTokenService {
     }
 
     private Claims getClaims(String token) {
-        return Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     public long getExpirationMs() {
