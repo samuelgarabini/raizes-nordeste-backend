@@ -8,8 +8,8 @@ import java.util.UUID;
 @Schema(
     name = "StatusPedidoResponse",
     description =
-        "Resultado da transição operacional "
-            + "do pedido"
+        "Resultado de uma alteração de status "
+            + "do pedido, incluindo o cancelamento"
 )
 public record StatusPedidoResponseDTO(
 

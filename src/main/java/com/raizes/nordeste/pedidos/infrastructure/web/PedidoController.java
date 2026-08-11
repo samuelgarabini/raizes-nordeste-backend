@@ -3,6 +3,7 @@ package com.raizes.nordeste.pedidos.infrastructure.web;
 import com.raizes.nordeste.pedidos.application.AtualizarStatusPedidoUseCase;
 import com.raizes.nordeste.pedidos.application.BuscarPedidoPorIdUseCase;
 import com.raizes.nordeste.pedidos.application.BuscarTodosPedidosUseCase;
+import com.raizes.nordeste.pedidos.application.CancelarPedidoUseCase;
 import com.raizes.nordeste.pedidos.application.CriarPedidoUseCase;
 import com.raizes.nordeste.pedidos.application.ProcessarCheckoutUseCase;
 import com.raizes.nordeste.pedidos.application.dto.AtualizarStatusPedidoCommand;
@@ -48,7 +49,7 @@ import java.util.UUID;
 @Tag(
     name = "Pedidos",
     description =
-        "Criação, consulta, checkout e ciclo "
+        "Criação, consulta, checkout, cancelamento e ciclo "
             + "operacional dos pedidos multicanal"
 )
 @SecurityRequirement(
@@ -97,6 +98,9 @@ public class PedidoController {
     private final AtualizarStatusPedidoUseCase
         atualizarStatusPedidoUseCase;
 
+    private final CancelarPedidoUseCase
+        cancelarPedidoUseCase;
+
     public PedidoController(
         CriarPedidoUseCase criarPedidoUseCase,
         BuscarPedidoPorIdUseCase
@@ -106,7 +110,9 @@ public class PedidoController {
         ProcessarCheckoutUseCase
             processarCheckoutUseCase,
         AtualizarStatusPedidoUseCase
-            atualizarStatusPedidoUseCase
+            atualizarStatusPedidoUseCase,
+        CancelarPedidoUseCase
+            cancelarPedidoUseCase
     ) {
         this.criarPedidoUseCase =
             criarPedidoUseCase;
@@ -118,6 +124,8 @@ public class PedidoController {
             processarCheckoutUseCase;
         this.atualizarStatusPedidoUseCase =
             atualizarStatusPedidoUseCase;
+        this.cancelarPedidoUseCase =
+            cancelarPedidoUseCase;
     }
 
     @PostMapping
@@ -425,6 +433,110 @@ public class PedidoController {
         StatusPedidoResponseDTO response =
             atualizarStatusPedidoUseCase
                 .executar(command);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/cancelamento")
+    @Operation(
+        summary = "Cancelar pedido",
+        description =
+            "Cancela um pedido que ainda esteja em "
+                + "AGUARDANDO_PAGAMENTO e devolve "
+                + "integralmente os itens reservados ao "
+                + "estoque da unidade. Pedidos pagos, "
+                + "recusados, em preparação, entregues "
+                + "ou já cancelados não podem ser "
+                + "cancelados. Perfis permitidos: "
+                + "ADMIN, GERENTE e ATENDENTE."
+    )
+    @ApiResponses({
+        @ApiResponse(
+            responseCode = "200",
+            description =
+                "Pedido cancelado e estoque devolvido",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation =
+                        StatusPedidoResponseDTO.class
+                ),
+                examples = @ExampleObject(
+                    name = "Cancelamento concluído",
+                    value = """
+                        {
+                          "pedidoId": "2f9210c7-798c-4f7d-9473-38cf70c508bb",
+                          "statusAnterior": "AGUARDANDO_PAGAMENTO",
+                          "statusAtual": "CANCELADO"
+                        }
+                        """
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "400",
+            description =
+                "Identificador em formato inválido",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation =
+                        ApiErrorResponse.class
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Pedido não encontrado",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation =
+                        ApiErrorResponse.class
+                )
+            )
+        ),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Cancelamento não permitido no status atual",
+            content = @Content(
+                mediaType = "application/json",
+                schema = @Schema(
+                    implementation =
+                        ApiErrorResponse.class
+                ),
+                examples = @ExampleObject(
+                    name =
+                        "Pedido não pode ser cancelado",
+                    value = """
+                        {
+                          "error": "CANCELAMENTO_NAO_PERMITIDO",
+                          "message": "O pedido não pode ser cancelado no status PAGO",
+                          "details": null,
+                          "timestamp": "2026-08-11T12:00:00Z",
+                          "path": "/api/v1/pedidos/2f9210c7-798c-4f7d-9473-38cf70c508bb/cancelamento",
+                          "requestId": "f2bb61cc-b4be-4c53-8773-59ef6f5bb94f"
+                        }
+                        """
+                )
+            )
+        )
+    })
+    public ResponseEntity<StatusPedidoResponseDTO>
+        cancelarPedido(
+            @Parameter(
+                description =
+                    "Identificador UUID do pedido",
+                required = true,
+                example =
+                    "2f9210c7-798c-4f7d-9473-38cf70c508bb"
+            )
+            @PathVariable UUID id
+        ) {
+
+        StatusPedidoResponseDTO response =
+            cancelarPedidoUseCase.executar(id);
 
         return ResponseEntity.ok(response);
     }
