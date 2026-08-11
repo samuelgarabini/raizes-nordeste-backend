@@ -251,6 +251,45 @@ class CheckoutIntegrationTest {
     }
 
     @Test
+    void naoDeveCreditarPontosSemConsentimento()
+        throws Exception {
+
+        jdbcTemplate.update(
+            """
+                UPDATE consentimentos_fidelidade
+                SET concedido = FALSE,
+                    revogado_em = CURRENT_TIMESTAMP,
+                    atualizado_em = CURRENT_TIMESTAMP
+                WHERE cliente_id = ?::uuid
+                """,
+            CLIENTE_ID
+        );
+
+        UUID pedidoId = criarPedidoPadrao();
+
+        mockMvc.perform(
+                post(
+                    "/api/v1/pedidos/{id}/checkout",
+                    pedidoId
+                )
+            )
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.status")
+                .value("PAGO"))
+            .andExpect(jsonPath("$.statusPagamento")
+                .value("APROVADO"));
+
+        assertThat(pontosDoCliente())
+            .isEqualTo(50);
+
+        assertNenhumCreditoRegistrado(pedidoId);
+        assertPagamentoAprovado(
+            pedidoId,
+            new BigDecimal("58.30")
+        );
+    }
+
+    @Test
     void deveRetornar404ParaPedidoInexistente()
         throws Exception {
 
@@ -736,6 +775,35 @@ class CheckoutIntegrationTest {
                     pontos_acumulados = 50,
                     ultima_atualizacao =
                         CURRENT_TIMESTAMP
+                """,
+            CLIENTE_ID
+        );
+
+        jdbcTemplate.update(
+            """
+                INSERT INTO consentimentos_fidelidade (
+                    cliente_id,
+                    concedido,
+                    versao_termo,
+                    concedido_em,
+                    revogado_em,
+                    atualizado_em
+                )
+                VALUES (
+                    ?::uuid,
+                    TRUE,
+                    '1.0',
+                    CURRENT_TIMESTAMP,
+                    NULL,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (cliente_id)
+                DO UPDATE SET
+                    concedido = TRUE,
+                    versao_termo = '1.0',
+                    concedido_em = CURRENT_TIMESTAMP,
+                    revogado_em = NULL,
+                    atualizado_em = CURRENT_TIMESTAMP
                 """,
             CLIENTE_ID
         );

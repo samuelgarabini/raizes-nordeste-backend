@@ -118,6 +118,29 @@ public class SecurityConfig {
                 )
 
                 .requestMatchers(
+                    HttpMethod.GET,
+                    "/api/v1/fidelidade/*"
+                )
+                .hasAnyRole(
+                    "ADMIN",
+                    "GERENTE",
+                    "ATENDENTE",
+                    "CLIENTE"
+                )
+
+                .requestMatchers(
+                    HttpMethod.PUT,
+                    "/api/v1/fidelidade/*/consentimento"
+                )
+                .hasRole("CLIENTE")
+
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/api/v1/fidelidade/*/resgates"
+                )
+                .hasRole("CLIENTE")
+
+                .requestMatchers(
                     "/api/v1/pedidos/**"
                 )
                 .hasAnyRole(
