@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "c8eb5f75-22f4-4bbf-8e3d-0f4bb1e95202",
     "name": "Raízes do Nordeste - API",
-    "description": "Coleção executável do fluxo principal da API. Execute as pastas na ordem apresentada. Contém cenários positivos e negativos de autenticação, autorização, validação, pedidos, checkout, cancelamento, campanhas e ciclo operacional.",
+    "description": "Coleção executável do fluxo principal da API. Execute as pastas na ordem apresentada. Contém cenários positivos e negativos de autenticação, autorização, validação, pedidos, checkout, cancelamento, campanhas, fidelidade, consentimento, resgate e ciclo operacional.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -14,7 +14,10 @@
     { "key": "pedidoId", "value": "", "type": "string" },
     { "key": "pedidoRecusadoId", "value": "", "type": "string" },
     { "key": "pedidoCupomId", "value": "", "type": "string" },
-    { "key": "pedidoCancelamentoId", "value": "", "type": "string" }
+    { "key": "pedidoCancelamentoId", "value": "", "type": "string" },
+    { "key": "saldoFidelidadeAntes", "value": "", "type": "string" },
+    { "key": "saldoFidelidadeDepois", "value": "", "type": "string" },
+    { "key": "resgateOperacaoId", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -447,6 +450,141 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
             "pm.test('Cancelamento duplicado bloqueado', () => pm.expect(pm.response.json().error).to.eql('CANCELAMENTO_NAO_PERMITIDO'));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "08 - Fidelidade e consentimento",
+      "description": "Consulta a carteira, revoga e concede consentimento, valida o bloqueio sem consentimento, resgata pontos e protege o acesso por cliente.",
+      "item": [
+        {
+          "name": "T28 - Consultar saldo e consentimento",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}",
+            "description": "Esperado: HTTP 200, consentimento ativo, finalidade/base legal explícitas e saldo armazenado para o resgate."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Carteira pertence ao cliente', () => { pm.expect(json.clienteId).to.eql(pm.collectionVariables.get('clienteId')); pm.expect(json.saldoPontos).to.be.a('number'); });",
+            "pm.test('Consentimento e base legal registrados', () => { pm.expect(json.consentimento.concedido).to.eql(true); pm.expect(json.consentimento.finalidade).to.eql('PROGRAMA_FIDELIDADE'); pm.expect(json.consentimento.baseLegal).to.eql('CONSENTIMENTO'); });",
+            "pm.collectionVariables.set('saldoFidelidadeAntes', String(json.saldoPontos));"
+          ] } }]
+        },
+        {
+          "name": "T29 - Revogar consentimento",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"concedido\": false,\n  \"versaoTermo\": \"1.0\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}/consentimento",
+            "description": "Esperado: HTTP 200, consentimento revogado e timestamp de revogação."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Consentimento revogado', () => { pm.expect(json.concedido).to.eql(false); pm.expect(json.revogadoEm).to.be.a('string').and.not.empty; });"
+          ] } }]
+        },
+        {
+          "name": "T30 - Resgate bloqueado sem consentimento",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pontos\": 5\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}/resgates",
+            "description": "Cenário negativo. Esperado: HTTP 409 e CONSENTIMENTO_FIDELIDADE_NECESSARIO."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+            "pm.test('Consentimento exigido', () => pm.expect(pm.response.json().error).to.eql('CONSENTIMENTO_FIDELIDADE_NECESSARIO'));"
+          ] } }]
+        },
+        {
+          "name": "T31 - Conceder consentimento",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"concedido\": true,\n  \"versaoTermo\": \"1.0\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}/consentimento",
+            "description": "Esperado: HTTP 200, consentimento ativo e finalidade específica persistida."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Consentimento concedido', () => { pm.expect(json.concedido).to.eql(true); pm.expect(json.concedidoEm).to.be.a('string').and.not.empty; });",
+            "pm.test('Finalidade específica', () => pm.expect(json.finalidade).to.eql('PROGRAMA_FIDELIDADE'));"
+          ] } }]
+        },
+        {
+          "name": "T32 - Resgatar pontos com saldo",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pontos\": 5\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}/resgates",
+            "description": "Esperado: HTTP 200, débito de 5 pontos e novo saldo armazenado."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "const saldoAntes = Number(pm.collectionVariables.get('saldoFidelidadeAntes'));",
+            "pm.test('Cinco pontos debitados', () => { pm.expect(json.pontosResgatados).to.eql(5); pm.expect(json.saldoAnterior).to.eql(saldoAntes); pm.expect(json.saldoAtual).to.eql(saldoAntes - 5); });",
+            "pm.test('Operação identificada', () => pm.expect(json.operacaoId).to.be.a('string').and.not.empty);",
+            "pm.collectionVariables.set('saldoFidelidadeDepois', String(json.saldoAtual));",
+            "pm.collectionVariables.set('resgateOperacaoId', json.operacaoId);"
+          ] } }]
+        },
+        {
+          "name": "T33 - Consultar histórico após resgate",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}",
+            "description": "Esperado: saldo reduzido e movimentação DEBITO identificada no histórico."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "const saldoEsperado = Number(pm.collectionVariables.get('saldoFidelidadeDepois'));",
+            "const operacaoId = pm.collectionVariables.get('resgateOperacaoId');",
+            "pm.test('Saldo persistido', () => pm.expect(json.saldoPontos).to.eql(saldoEsperado));",
+            "pm.test('Débito presente no histórico', () => pm.expect(json.historico.some(item => item.operacaoId === operacaoId && item.tipoOperacao === 'DEBITO' && item.pontos === 5)).to.eql(true));"
+          ] } }]
+        },
+        {
+          "name": "T34 - Resgate acima do saldo",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"pontos\": 999999\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/fidelidade/{{clienteId}}/resgates",
+            "description": "Cenário negativo. Esperado: HTTP 409 e SALDO_PONTOS_INSUFICIENTE."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+            "pm.test('Saldo insuficiente', () => pm.expect(pm.response.json().error).to.eql('SALDO_PONTOS_INSUFICIENTE'));"
+          ] } }]
+        },
+        {
+          "name": "T35 - Cliente proibido de consultar outra carteira",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/fidelidade/00000000-0000-0000-0000-000000000999",
+            "description": "Cenário negativo de autorização por objeto. Esperado: HTTP 403 e ACESSO_CLIENTE_NEGADO."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+            "pm.test('Outra carteira protegida', () => pm.expect(pm.response.json().error).to.eql('ACESSO_CLIENTE_NEGADO'));"
           ] } }]
         }
       ]

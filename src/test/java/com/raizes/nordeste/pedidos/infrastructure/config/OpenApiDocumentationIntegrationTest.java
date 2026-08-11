@@ -148,6 +148,30 @@ class OpenApiDocumentationIntegrationTest {
                 "delete"
             )
         );
+
+        assertBearerProtected(
+            operation(
+                document,
+                "/api/v1/fidelidade/{clienteId}",
+                "get"
+            )
+        );
+
+        assertBearerProtected(
+            operation(
+                document,
+                "/api/v1/fidelidade/{clienteId}/consentimento",
+                "put"
+            )
+        );
+
+        assertBearerProtected(
+            operation(
+                document,
+                "/api/v1/fidelidade/{clienteId}/resgates",
+                "post"
+            )
+        );
     }
 
     @Test
@@ -258,6 +282,46 @@ class OpenApiDocumentationIntegrationTest {
             "401",
             "403"
         );
+
+        assertResponses(
+            operation(
+                document,
+                "/api/v1/fidelidade/{clienteId}",
+                "get"
+            ),
+            "200",
+            "400",
+            "401",
+            "403",
+            "404"
+        );
+
+        assertResponses(
+            operation(
+                document,
+                "/api/v1/fidelidade/{clienteId}/consentimento",
+                "put"
+            ),
+            "200",
+            "400",
+            "401",
+            "403",
+            "404"
+        );
+
+        assertResponses(
+            operation(
+                document,
+                "/api/v1/fidelidade/{clienteId}/resgates",
+                "post"
+            ),
+            "200",
+            "400",
+            "401",
+            "403",
+            "404",
+            "409"
+        );
     }
 
     @Test
@@ -299,6 +363,33 @@ class OpenApiDocumentationIntegrationTest {
                 .path("example")
                 .asText()
         ).isEqualTo("ESTOQUE_INSUFICIENTE");
+
+        assertThat(
+            schemas
+                .path(
+                    "AtualizarConsentimentoFidelidadeRequest"
+                )
+                .path("properties")
+                .path("concedido")
+                .path("example")
+                .asBoolean()
+        ).isTrue();
+
+        assertThat(
+            schemas.path("ResgatarPontosRequest")
+                .path("properties")
+                .path("pontos")
+                .path("example")
+                .asInt()
+        ).isEqualTo(10);
+
+        assertThat(
+            schemas.path("FidelidadeResponse")
+                .path("properties")
+                .path("saldoPontos")
+                .path("example")
+                .asInt()
+        ).isEqualTo(55);
     }
 
     @Test

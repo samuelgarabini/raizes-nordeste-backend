@@ -49,6 +49,12 @@ public class Usuario {
     )
     private Perfil perfil;
 
+    @Column(
+        name = "cliente_id",
+        unique = true
+    )
+    private UUID clienteId;
+
     @Column(nullable = false)
     private boolean ativo;
 

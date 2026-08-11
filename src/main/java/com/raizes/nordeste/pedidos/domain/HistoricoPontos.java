@@ -12,7 +12,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -23,18 +22,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(
-    name = "historico_pontos",
-    uniqueConstraints = {
-        @UniqueConstraint(
-            name = "uk_historico_pontos_pedido_operacao",
-            columnNames = {
-                "pedido_id",
-                "tipo_operacao"
-            }
-        )
-    }
-)
+@Table(name = "historico_pontos")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -46,11 +34,18 @@ public class HistoricoPontos {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(
+        name = "operacao_id",
+        nullable = false,
+        unique = true
+    )
+    private UUID operacaoId;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "carteira_id", nullable = false)
     private CarteiraFidelidade carteira;
 
-    @Column(name = "pedido_id", nullable = false)
+    @Column(name = "pedido_id")
     private UUID pedidoId;
 
     @Column(name = "pontos_alterados", nullable = false)
@@ -69,6 +64,10 @@ public class HistoricoPontos {
 
     @PrePersist
     protected void prePersist() {
+        if (operacaoId == null) {
+            operacaoId = UUID.randomUUID();
+        }
+
         if (dataOperacao == null) {
             dataOperacao = LocalDateTime.now();
         }

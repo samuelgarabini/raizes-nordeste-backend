@@ -45,13 +45,17 @@ O Docker Compose também provisiona Redis, RabbitMQ, Kafka e Kafka UI para evolu
 - Pagamento mock aprovado ou recusado.
 - Aplicação de campanha promocional.
 - Baixa e restauração transacional de estoque.
-- Crédito de pontos e histórico de fidelidade.
+- Consentimento explícito e revogável para o programa de fidelidade.
+- Crédito de pontos condicionado ao consentimento ativo.
+- Consulta de saldo e histórico de movimentações.
+- Resgate transacional de pontos com validação de saldo.
+- Autorização por objeto: o perfil `CLIENTE` acessa apenas a própria carteira.
 - Atualização controlada do ciclo de status do pedido.
 - Cancelamento controlado antes do pagamento, com devolução transacional do estoque.
 - Respostas de erro padronizadas.
 - Criptografia AES-256-GCM dos dados pessoais.
 - Impressão digital HMAC-SHA-256 para busca e unicidade do CPF.
-- Auditoria de login, checkout, cancelamento e alteração de status.
+- Auditoria de login, checkout, cancelamento, alteração de status, consulta, consentimento e resgate de fidelidade.
 - Migrações e dados iniciais controlados pelo Flyway.
 - Testes unitários e de integração automatizados.
 
@@ -221,6 +225,9 @@ Authorization: Bearer token-jwt
 | `POST` | `/api/v1/pedidos/{id}/checkout` | Autenticado | Processar pagamento mock |
 | `PATCH` | `/api/v1/pedidos/{id}/status` | `ADMIN`, `GERENTE` ou `ATENDENTE` | Atualizar status |
 | `PATCH` | `/api/v1/pedidos/{id}/cancelamento` | `ADMIN`, `GERENTE` ou `ATENDENTE` | Cancelar pedido antes do pagamento |
+| `GET` | `/api/v1/fidelidade/{clienteId}` | Autenticado e autorizado para o cliente | Consultar consentimento, saldo e histórico |
+| `PUT` | `/api/v1/fidelidade/{clienteId}/consentimento` | Próprio `CLIENTE` | Conceder ou revogar consentimento |
+| `POST` | `/api/v1/fidelidade/{clienteId}/resgates` | Próprio `CLIENTE` | Resgatar pontos disponíveis |
 | `GET` | `/api/v1/pedidos/health` | Autenticado | Verificar a API |
 
 O Swagger apresenta o contrato navegável da aplicação. A coleção Postman fica em:
@@ -290,9 +297,53 @@ Authorization: Bearer token-jwt
 
 O cancelamento altera o status para `CANCELADO`, devolve integralmente ao estoque os produtos reservados e registra a operação na auditoria. Pedidos pagos, recusados, em preparação, prontos, entregues ou já cancelados retornam `409 CANCELAMENTO_NAO_PERMITIDO`.
 
+## Programa de fidelidade e consentimento
+
+O usuário de demonstração `cliente` está vinculado ao cadastro `a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11`. Esse vínculo impede que um cliente consulte ou altere a carteira de outra pessoa.
+
+Consulta do saldo, consentimento e histórico:
+
+```http
+GET /api/v1/fidelidade/{clienteId}
+Authorization: Bearer token-jwt
+```
+
+Concessão ou revogação explícita do consentimento:
+
+```http
+PUT /api/v1/fidelidade/{clienteId}/consentimento
+Authorization: Bearer token-jwt
+Content-Type: application/json
+```
+
+```json
+{
+  "concedido": true,
+  "versaoTermo": "1.0"
+}
+```
+
+A finalidade persistida é `PROGRAMA_FIDELIDADE` e a base legal registrada é `CONSENTIMENTO`. A revogação mantém o saldo e o histórico já existentes, mas impede novos créditos e resgates até uma nova concessão.
+
+Resgate simples de pontos:
+
+```http
+POST /api/v1/fidelidade/{clienteId}/resgates
+Authorization: Bearer token-jwt
+Content-Type: application/json
+```
+
+```json
+{
+  "pontos": 10
+}
+```
+
+O resgate utiliza bloqueio pessimista na carteira, registra uma movimentação `DEBITO` e retorna `409 SALDO_PONTOS_INSUFICIENTE` ou `409 CONSENTIMENTO_FIDELIDADE_NECESSARIO` quando a regra não é atendida.
+
 ## Testes automatizados
 
-A suíte possui testes unitários e de integração para autenticação, autorização, cardápio, pedidos, checkout, cancelamento, filtros, detalhes, ciclo de status, criptografia, fingerprints e auditoria.
+A suíte possui testes unitários e de integração para autenticação, autorização, cardápio, pedidos, checkout, cancelamento, fidelidade, consentimento, resgate, autorização por cliente, filtros, detalhes, ciclo de status, criptografia, fingerprints e auditoria.
 
 Com Maven instalado:
 
@@ -366,7 +417,7 @@ A coleção executável está disponível em:
 docs/postman_collection.json
 ```
 
-Ela contém 27 requisições e 58 verificações automatizadas, abrangendo autenticação, autorização, validações, cardápio, pedidos, checkout, cancelamento, pagamento, campanhas e ciclo de status.
+Ela contém 35 requisições e 78 verificações automatizadas, abrangendo autenticação, autorização, validações, cardápio, pedidos, checkout, cancelamento, pagamento, campanhas, fidelidade, consentimento, resgate e ciclo de status.
 
 Com a aplicação em execução, a coleção pode ser testada no Windows sem instalar o Postman, utilizando o Newman pelo Docker:
 
@@ -379,7 +430,7 @@ docker run --rm `
 $LASTEXITCODE
 ```
 
-O resultado esperado é `0`, com 27 requisições e 58 verificações aprovadas.
+O resultado esperado é `0`, com 35 requisições e 78 verificações aprovadas.
 
 ## Integração contínua
 
@@ -404,7 +455,7 @@ O banco inclui, entre outras, as seguintes estruturas:
 - pedidos e itens;
 - pagamentos;
 - campanhas;
-- carteiras e histórico de fidelidade;
+- carteiras, consentimentos e histórico de fidelidade;
 - usuários;
 - outbox;
 - auditoria de segurança.
@@ -430,20 +481,21 @@ Atenção: `docker compose down -v` remove definitivamente os dados locais do ba
 A implementação contém:
 
 - autenticação stateless com JWT;
-- autorização por perfil;
+- autorização por perfil e por cliente nas rotas de fidelidade;
 - BCrypt para senhas;
 - AES-256-GCM com IV aleatório para CPF e e-mail;
 - HMAC-SHA-256 para fingerprint do CPF;
 - segredos externos ao repositório;
 - respostas `401` e `403` padronizadas;
 - auditoria de operações sensíveis;
+- consentimento de fidelidade com finalidade, base legal, versão e timestamps de concessão/revogação;
 - logs sem exposição direta de credenciais ou dados pessoais.
 
 A rota demonstrativa `/api/v1/lgpd/anonimizar` ainda não executa anonimização persistente. Ela não deve ser apresentada como implementação completa do direito de eliminação.
 
 ## Limitações e evoluções futuras
 
-- Implementar anonimização persistente e gestão de consentimento.
+- Implementar anonimização persistente para substituir a rota demonstrativa atual.
 - Integrar efetivamente Redis ao cache do cardápio.
 - Publicar eventos de domínio por RabbitMQ ou Kafka.
 - Aplicar isolamento multi-tenant completo associado à identidade autenticada.
