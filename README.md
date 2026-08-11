@@ -368,6 +368,16 @@ $LASTEXITCODE
 
 O resultado esperado é `0`, com 23 requisições e 50 verificações aprovadas.
 
+## Integração contínua
+
+O workflow `.github/workflows/ci.yaml` executa automaticamente:
+
+1. Compilação com Java 17 e Maven.
+2. Testes unitários e de integração.
+3. Construção da imagem Docker.
+
+O workflow é acionado em pull requests direcionadas à `main` e em pushes para `main` ou `develop`.
+
 ## Banco de dados
 
 As migrações Flyway são executadas automaticamente durante a inicialização.
