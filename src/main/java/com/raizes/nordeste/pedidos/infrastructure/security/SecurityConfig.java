@@ -108,6 +108,16 @@ public class SecurityConfig {
                 )
 
                 .requestMatchers(
+                    HttpMethod.PATCH,
+                    "/api/v1/pedidos/*/cancelamento"
+                )
+                .hasAnyRole(
+                    "ADMIN",
+                    "GERENTE",
+                    "ATENDENTE"
+                )
+
+                .requestMatchers(
                     "/api/v1/pedidos/**"
                 )
                 .hasAnyRole(

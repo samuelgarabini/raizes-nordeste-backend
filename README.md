@@ -47,10 +47,11 @@ O Docker Compose também provisiona Redis, RabbitMQ, Kafka e Kafka UI para evolu
 - Baixa e restauração transacional de estoque.
 - Crédito de pontos e histórico de fidelidade.
 - Atualização controlada do ciclo de status do pedido.
+- Cancelamento controlado antes do pagamento, com devolução transacional do estoque.
 - Respostas de erro padronizadas.
 - Criptografia AES-256-GCM dos dados pessoais.
 - Impressão digital HMAC-SHA-256 para busca e unicidade do CPF.
-- Auditoria de login, checkout e alteração de status.
+- Auditoria de login, checkout, cancelamento e alteração de status.
 - Migrações e dados iniciais controlados pelo Flyway.
 - Testes unitários e de integração automatizados.
 
@@ -219,6 +220,7 @@ Authorization: Bearer token-jwt
 | `GET` | `/api/v1/pedidos/{id}` | Autenticado | Consultar detalhes |
 | `POST` | `/api/v1/pedidos/{id}/checkout` | Autenticado | Processar pagamento mock |
 | `PATCH` | `/api/v1/pedidos/{id}/status` | `ADMIN`, `GERENTE` ou `ATENDENTE` | Atualizar status |
+| `PATCH` | `/api/v1/pedidos/{id}/cancelamento` | `ADMIN`, `GERENTE` ou `ATENDENTE` | Cancelar pedido antes do pagamento |
 | `GET` | `/api/v1/pedidos/health` | Autenticado | Verificar a API |
 
 O Swagger apresenta o contrato navegável da aplicação. A coleção Postman fica em:
@@ -277,9 +279,20 @@ POST /api/v1/pedidos/{id}/checkout?codigoPromocional=BEMVINDO10
 
 O cupom `BEMVINDO10` concede 10% de desconto para pedidos que atendam ao valor mínimo configurado na campanha.
 
+## Cancelamento de pedido
+
+Pedidos em `AGUARDANDO_PAGAMENTO` podem ser cancelados por usuários com os perfis `ADMIN`, `GERENTE` ou `ATENDENTE`:
+
+```http
+PATCH /api/v1/pedidos/{id}/cancelamento
+Authorization: Bearer token-jwt
+```
+
+O cancelamento altera o status para `CANCELADO`, devolve integralmente ao estoque os produtos reservados e registra a operação na auditoria. Pedidos pagos, recusados, em preparação, prontos, entregues ou já cancelados retornam `409 CANCELAMENTO_NAO_PERMITIDO`.
+
 ## Testes automatizados
 
-A suíte possui testes unitários e de integração para autenticação, autorização, cardápio, pedidos, checkout, filtros, detalhes, ciclo de status, criptografia, fingerprints e auditoria.
+A suíte possui testes unitários e de integração para autenticação, autorização, cardápio, pedidos, checkout, cancelamento, filtros, detalhes, ciclo de status, criptografia, fingerprints e auditoria.
 
 Com Maven instalado:
 
@@ -353,7 +366,7 @@ A coleção executável está disponível em:
 docs/postman_collection.json
 ```
 
-Ela contém 23 requisições e 50 verificações automatizadas, abrangendo autenticação, autorização, validações, cardápio, pedidos, checkout, pagamento, campanhas e ciclo de status.
+Ela contém 27 requisições e 58 verificações automatizadas, abrangendo autenticação, autorização, validações, cardápio, pedidos, checkout, cancelamento, pagamento, campanhas e ciclo de status.
 
 Com a aplicação em execução, a coleção pode ser testada no Windows sem instalar o Postman, utilizando o Newman pelo Docker:
 
@@ -366,7 +379,7 @@ docker run --rm `
 $LASTEXITCODE
 ```
 
-O resultado esperado é `0`, com 23 requisições e 50 verificações aprovadas.
+O resultado esperado é `0`, com 27 requisições e 58 verificações aprovadas.
 
 ## Integração contínua
 

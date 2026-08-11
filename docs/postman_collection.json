@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "c8eb5f75-22f4-4bbf-8e3d-0f4bb1e95202",
     "name": "Raízes do Nordeste - API",
-    "description": "Coleção executável do fluxo principal da API. Execute as pastas na ordem apresentada. Contém cenários positivos e negativos de autenticação, autorização, validação, pedidos, checkout, campanhas e ciclo operacional.",
+    "description": "Coleção executável do fluxo principal da API. Execute as pastas na ordem apresentada. Contém cenários positivos e negativos de autenticação, autorização, validação, pedidos, checkout, cancelamento, campanhas e ciclo operacional.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,7 +13,8 @@
     { "key": "tokenAtendente", "value": "", "type": "string" },
     { "key": "pedidoId", "value": "", "type": "string" },
     { "key": "pedidoRecusadoId", "value": "", "type": "string" },
-    { "key": "pedidoCupomId", "value": "", "type": "string" }
+    { "key": "pedidoCupomId", "value": "", "type": "string" },
+    { "key": "pedidoCancelamentoId", "value": "", "type": "string" }
   ],
   "item": [
     {
@@ -383,6 +384,69 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
             "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
             "pm.test('Valor mínimo rejeitado', () => pm.expect(pm.response.json().error).to.eql('VALOR_MINIMO_NAO_ATINGIDO'));"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "07 - Cancelamento de pedido",
+      "description": "Cria um pedido ainda não pago, valida a autorização, cancela com perfil operacional e bloqueia uma repetição.",
+      "item": [
+        {
+          "name": "T24 - Criar pedido para cancelamento",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json", "type": "text" }],
+            "body": { "mode": "raw", "raw": "{\n  \"clienteId\": \"{{clienteId}}\",\n  \"unidadeId\": \"{{unidadeRecife}}\",\n  \"canalPedido\": \"WEB\",\n  \"itens\": [\n    { \"produtoId\": 101, \"quantidade\": 1 }\n  ]\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/pedidos",
+            "description": "Esperado: HTTP 201, status AGUARDANDO_PAGAMENTO e ID armazenado em pedidoCancelamentoId."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 201', () => pm.response.to.have.status(201));",
+            "const json = pm.response.json();",
+            "pm.test('Pedido disponível para cancelamento', () => pm.expect(json.status).to.eql('AGUARDANDO_PAGAMENTO'));",
+            "pm.collectionVariables.set('pedidoCancelamentoId', json.id);"
+          ] } }]
+        },
+        {
+          "name": "T25 - Cliente proibido de cancelar pedido",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenCliente}}", "type": "string" }] },
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/pedidos/{{pedidoCancelamentoId}}/cancelamento",
+            "description": "Cenário negativo de autorização. Esperado: HTTP 403 e ACESSO_NEGADO."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+            "pm.test('Cancelamento negado ao cliente', () => pm.expect(pm.response.json().error).to.eql('ACESSO_NEGADO'));"
+          ] } }]
+        },
+        {
+          "name": "T26 - Atendente cancela pedido",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenAtendente}}", "type": "string" }] },
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/pedidos/{{pedidoCancelamentoId}}/cancelamento",
+            "description": "Esperado: HTTP 200, transição de AGUARDANDO_PAGAMENTO para CANCELADO e devolução do estoque."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+            "const json = pm.response.json();",
+            "pm.test('Pedido cancelado', () => { pm.expect(json.statusAnterior).to.eql('AGUARDANDO_PAGAMENTO'); pm.expect(json.statusAtual).to.eql('CANCELADO'); });"
+          ] } }]
+        },
+        {
+          "name": "T27 - Repetição do cancelamento bloqueada",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{tokenAtendente}}", "type": "string" }] },
+            "method": "PATCH",
+            "url": "{{baseUrl}}/api/v1/pedidos/{{pedidoCancelamentoId}}/cancelamento",
+            "description": "Cenário negativo de idempotência. Esperado: HTTP 409 e CANCELAMENTO_NAO_PERMITIDO."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": [
+            "pm.test('HTTP 409', () => pm.response.to.have.status(409));",
+            "pm.test('Cancelamento duplicado bloqueado', () => pm.expect(pm.response.json().error).to.eql('CANCELAMENTO_NAO_PERMITIDO'));"
           ] } }]
         }
       ]

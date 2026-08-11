@@ -128,6 +128,14 @@ class OpenApiDocumentationIntegrationTest {
         assertBearerProtected(
             operation(
                 document,
+                "/api/v1/pedidos/{id}/cancelamento",
+                "patch"
+            )
+        );
+
+        assertBearerProtected(
+            operation(
+                document,
                 "/api/campanhas",
                 "get"
             )
@@ -191,6 +199,20 @@ class OpenApiDocumentationIntegrationTest {
             operation(
                 document,
                 "/api/v1/pedidos/{id}/status",
+                "patch"
+            ),
+            "200",
+            "400",
+            "401",
+            "403",
+            "404",
+            "409"
+        );
+
+        assertResponses(
+            operation(
+                document,
+                "/api/v1/pedidos/{id}/cancelamento",
                 "patch"
             ),
             "200",
