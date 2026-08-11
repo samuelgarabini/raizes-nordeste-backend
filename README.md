@@ -345,6 +345,13 @@ Get-ChildItem target\surefire-reports\*.txt |
     Select-String "Tests run:"
 ```
 
+## Testes da API com Postman e Newman
+
+A coleção executável está disponível em:
+
+```text
+docs/postman_collection.json
+
 ## Integração contínua
 
 O workflow `.github/workflows/ci.yaml` executa automaticamente:
