@@ -351,16 +351,22 @@ A coleção executável está disponível em:
 
 ```text
 docs/postman_collection.json
+```
 
-## Integração contínua
+Ela contém 23 requisições e 50 verificações automatizadas, abrangendo autenticação, autorização, validações, cardápio, pedidos, checkout, pagamento, campanhas e ciclo de status.
 
-O workflow `.github/workflows/ci.yaml` executa automaticamente:
+Com a aplicação em execução, a coleção pode ser testada no Windows sem instalar o Postman, utilizando o Newman pelo Docker:
 
-1. Compilação com Java 17 e Maven.
-2. Testes unitários e de integração.
-3. Construção da imagem Docker.
+```powershell
+docker run --rm `
+  --mount "type=bind,source=$($PWD.Path),target=/etc/newman" `
+  postman/newman:alpine `
+  run /etc/newman/docs/postman_collection.json `
+  --env-var "baseUrl=http://host.docker.internal:8081"
+$LASTEXITCODE
+```
 
-O workflow é acionado em pull requests direcionadas à `main` e em pushes para `main` ou `develop`.
+O resultado esperado é `0`, com 23 requisições e 50 verificações aprovadas.
 
 ## Banco de dados
 
