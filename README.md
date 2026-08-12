@@ -2,7 +2,7 @@
 
 [![Continuous Integration](https://github.com/samuelgarabini/raizes-nordeste-backend/actions/workflows/ci.yaml/badge.svg)](https://github.com/samuelgarabini/raizes-nordeste-backend/actions/workflows/ci.yaml)
 
-API REST desenvolvida para o projeto multidisciplinar da rede fictícia de lanchonetes **Raízes do Nordeste**.
+API REST desenvolvida para o projeto multidisciplinar da rede de lanchonetes **Raízes do Nordeste**.
 
 A aplicação implementa autenticação JWT, cardápio por unidade, pedidos multicanal, controle de estoque, checkout com pagamento simulado, campanhas promocionais, fidelidade, ciclo de status, proteção de dados pessoais e auditoria de operações sensíveis.
 
@@ -116,8 +116,6 @@ JWT_SECRET=primeira_saida
 DATA_ENCRYPTION_KEY=segunda_saida
 DATA_FINGERPRINT_KEY=terceira_saida
 ```
-
-O arquivo `.env` contém valores locais e não deve ser enviado ao Git. Apenas o `.env.example` deve permanecer versionado.
 
 ## Inicialização da aplicação
 
